@@ -1,0 +1,12 @@
+.classpath
+.project
+.settings
+.springBeans
+*.ipr
+*.iws
+target
+.idea
+*.iml
+build
+.gradle
+dependency-reduced-pom.xml
