@@ -1,5 +1,5 @@
 /opensource/kafka_2.13-3.1.0/bin/kafka-producer-perf-test.sh \
-	 --topic greg-test \
+	 --topic greg-test1 \
 	 --num-records 100000 \
 	 --record-size 1024 \
 	 --print-metrics \

@@ -1,13 +1,12 @@
 package com.essexboy;
 
-import org.apache.kafka.clients.admin.*;
-import org.apache.kafka.common.Node;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.DescribeClusterResult;
+import org.apache.kafka.clients.admin.TopicListing;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -32,7 +31,7 @@ public class AppTest {
 
         // get all the brokers
         final DescribeClusterResult describeClusterResult = client.describeCluster();
-        describeClusterResult.nodes().get().stream().forEach(s->{
+        describeClusterResult.nodes().get().stream().forEach(s -> {
             System.out.println(s);
         });
 

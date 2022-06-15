@@ -1,5 +1,6 @@
 export KAFKA_DATA=/home/greg/work/kafka-heartbeat
 docker-compose up -d
+#docker-compose up 
 #/opensource/kafka_2.13-3.1.0/bin/kafka-topics.sh --bootstrap-server kafka1.test.local:9092 --list
 #
 `docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' kafka1  | awk '{print "export KAFKA1="$1}'`

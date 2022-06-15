@@ -1,9 +1,16 @@
 package com.essexboy;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -15,10 +22,14 @@ public class HeatBeatCron extends TimerTask {
     private Timer timer = new Timer();
     private Config config;
     private HeatBeatService heatBeatService;
-    private int count = 0;
+    private int failCount = 0;
+    private int passCount = 0;
 
-    public HeatBeatCron(Config config) {
-        this.config = config;
+    public HeatBeatCron(InputStream inputStream) throws IOException {
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory().disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER));
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        mapper.configure(JsonParser.Feature.AUTO_CLOSE_SOURCE, true);
+        config = mapper.readValue(inputStream, Config.class);
         this.heatBeatService = new HeartBeatServiceImpl(config);
     }
 
@@ -38,9 +49,16 @@ public class HeatBeatCron extends TimerTask {
 
     @Override
     public void run() {
-        count++;
         try {
-            LOGGER.debug("run, isUp {}", heatBeatService.isUp());
+            final boolean up = heatBeatService.isUp();
+            LOGGER.debug("run, isUp {}", up);
+            if (up) {
+                passCount++;
+                failCount = 0;
+            } else {
+                failCount++;
+                passCount = 0;
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

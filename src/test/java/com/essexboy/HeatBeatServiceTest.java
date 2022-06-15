@@ -3,6 +3,8 @@ package com.essexboy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HeatBeatServiceTest {
@@ -10,11 +12,9 @@ class HeatBeatServiceTest {
     private HeatBeatService heatBeatService;
 
     @BeforeEach
-    private void init() {
-        Config config = new Config();
-        config.setBootStrapServers("172.26.0.7:9092,172.26.0.5:9093,172.26.0.6:9094");
-        config.setNumberOfBrokers(3);
-        heatBeatService = new HeartBeatServiceImpl(config);
+    private void init() throws IOException {
+        final HeatBeatCron heatBeatCron = new HeatBeatCron(getClass().getResourceAsStream("/testConfig.yaml"));
+        heatBeatService = new HeartBeatServiceImpl(heatBeatCron.getConfig());
     }
 
     @Test

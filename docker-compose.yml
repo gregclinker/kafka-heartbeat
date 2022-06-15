@@ -35,45 +35,29 @@ services:
       ZOOKEEPER_SERVERS: zoo1:2888:3888;zoo2:2888:3888;zoo3:2888:3888
 
 
-
   kafka1:
     image: confluentinc/cp-kafka:7.1.1
     hostname: kafka1
     container_name: kafka1
     ports:
       - "9092:9092"
+      - "29092:29092"
     environment:
-      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka1:19092,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ADVERTISED_LISTENERS: ISSL://kafka1:19092,OSSL://${DOCKER_HOST_IP:-127.0.0.1}:29092,EXTERNAL_PLAINTEXT://${DOCKER_HOST_IP:-127.0.0.1}:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: ISSL:SSL,OSSL:SSL,EXTERNAL_PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: ISSL
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2182,zoo3:2183"
       KAFKA_BROKER_ID: 1
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
-      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
-    depends_on:
-      - zoo1
-      - zoo2
-      - zoo3
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ${KAFKA_DATA}/kafka1:/kafka
-
-  kafka2:
-    image: confluentinc/cp-kafka:7.1.1
-    hostname: kafka2
-    container_name: kafka2
-    ports:
-      - "9093:9093"
-    environment:
-      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka2:19093,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
-      KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2182,zoo3:2183"
-      KAFKA_BROKER_ID: 2
-      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
-      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
-      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_SSL_KEYSTORE_FILENAME: kafka_keystore.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: kafka_keystore.creds
+      KAFKA_SSL_KEY_CREDENTIALS: kafka_keystore.creds
+      KAFKA_SSL_TRUSTSTORE_FILENAME: kafka_truststore.jks
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: kafka_truststore.creds
+      KAFKA_SSL_CLIENT_AUTH: required
+      KAFKA_SECURITY_PROTOCOL: SSL
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
     depends_on:
       - zoo1
       - zoo2
@@ -81,6 +65,39 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${KAFKA_DATA}/kafka2:/kafka
+      - ${KAFKA_DATA}/secrets:/etc/kafka/secrets
+
+  kafka2:
+    image: confluentinc/cp-kafka:7.1.1
+    hostname: kafka2
+    container_name: kafka2
+    ports:
+      - "9093:9093"
+      - "29093:29093"
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: ISSL://kafka2:19093,OSSL://${DOCKER_HOST_IP:-127.0.0.1}:29093,EXTERNAL_PLAINTEXT://${DOCKER_HOST_IP:-127.0.0.1}:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: ISSL:SSL,OSSL:SSL,EXTERNAL_PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: ISSL
+      KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2182,zoo3:2183"
+      KAFKA_BROKER_ID: 2
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_SSL_KEYSTORE_FILENAME: kafka_keystore.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: kafka_keystore.creds
+      KAFKA_SSL_KEY_CREDENTIALS: kafka_keystore.creds
+      KAFKA_SSL_TRUSTSTORE_FILENAME: kafka_truststore.jks
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: kafka_truststore.creds
+      KAFKA_SSL_CLIENT_AUTH: required
+      KAFKA_SECURITY_PROTOCOL: SSL
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+    depends_on:
+      - zoo1
+      - zoo2
+      - zoo3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${KAFKA_DATA}/kafka2:/kafka
+      - ${KAFKA_DATA}/secrets:/etc/kafka/secrets
 
   kafka3:
     image: confluentinc/cp-kafka:7.1.1
@@ -88,15 +105,23 @@ services:
     container_name: kafka3
     ports:
       - "9094:9094"
+      - "29094:29094"
     environment:
-      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka3:19094,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9094
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ADVERTISED_LISTENERS: ISSL://kafka3:19094,OSSL://${DOCKER_HOST_IP:-127.0.0.1}:29094,EXTERNAL_PLAINTEXT://${DOCKER_HOST_IP:-127.0.0.1}:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: ISSL:SSL,OSSL:SSL,EXTERNAL_PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: ISSL
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2182,zoo3:2183"
       KAFKA_BROKER_ID: 3
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
-      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_SSL_KEYSTORE_FILENAME: kafka_keystore.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: kafka_keystore.creds
+      KAFKA_SSL_KEY_CREDENTIALS: kafka_keystore.creds
+      KAFKA_SSL_TRUSTSTORE_FILENAME: kafka_truststore.jks
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: kafka_truststore.creds
+      KAFKA_SSL_CLIENT_AUTH: required
+      KAFKA_SECURITY_PROTOCOL: SSL
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
     depends_on:
       - zoo1
       - zoo2
@@ -104,3 +129,4 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${KAFKA_DATA}/kafka3:/kafka
+      - ${KAFKA_DATA}/secrets:/etc/kafka/secrets

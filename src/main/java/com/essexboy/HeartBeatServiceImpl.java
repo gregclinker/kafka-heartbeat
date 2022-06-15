@@ -15,11 +15,7 @@ public class HeartBeatServiceImpl implements HeatBeatService {
     private Config config;
 
     private AdminClient getAdminClient() {
-        Properties properties = new Properties();
-        properties.put("bootstrap.servers", config.getBootStrapServers());
-        properties.put("connections.max.idle.ms", 10000);
-        properties.put("request.timeout.ms", 5000);
-        return AdminClient.create(properties);
+        return AdminClient.create(config.getKafkaProperties());
     }
 
     @Override
