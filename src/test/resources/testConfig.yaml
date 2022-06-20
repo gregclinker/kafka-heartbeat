@@ -5,7 +5,7 @@ standardIsr: 3
 reducedIsr: 2
 failuresToSwitch: 3
 kafkaProperties:
-  bootstrap.servers: "172.31.0.5:29092,172.31.0.6:29093,172.31.0.7:29094"
+  bootstrap.servers: "172.31.0.6:29092,172.31.0.5:29093,172.31.0.7:29094"
   connections.max.idle.ms: "10000"
   request.timeout.ms": "5000"
   security.protocol: "SSL"
@@ -15,6 +15,7 @@ kafkaProperties:
   ssl.keystore.password: "confluent"
   ssl.key.password: "confluent"
   ssl.endpoint.identification.algorithm: " "
+  ssl.test.yaml.property: "ssl-test-yaml-property"
 topics:
   - greg_test1
   - greg_test2

@@ -6,22 +6,17 @@ import org.apache.kafka.clients.admin.TopicListing;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
-import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class AppTest {
+
     @Test
     public void test1() throws Exception {
-        assertTrue(true);
 
-        Properties properties = new Properties();
-        String bootstrapServers = "172.26.0.7:9092,172.26.0.5:9093,172.26.0.6:9094";
-        properties.put("bootstrap.servers", bootstrapServers);
-        properties.put("connections.max.idle.ms", 10000);
-        properties.put("request.timeout.ms", 5000);
-        AdminClient client = AdminClient.create(properties);
+        final HeartBeatConfig heartBeatConfig = new HeartBeatConfig(getClass().getResourceAsStream("/testConfig.yaml"));
+        AdminClient client = AdminClient.create(heartBeatConfig.getKafkaProperties());
         assertNotNull(client);
 
         final Collection<TopicListing> topicListings = client.listTopics().listings().get();
@@ -38,6 +33,5 @@ public class AppTest {
         System.out.println("nodes=" + describeClusterResult.nodes().get().size());
 
         System.out.println(describeClusterResult.controller().get());
-
     }
 }

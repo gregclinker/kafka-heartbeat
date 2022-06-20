@@ -5,8 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 class HeatBeatCronTest {
 
@@ -19,23 +18,25 @@ class HeatBeatCronTest {
 
     @Test
     public void config() {
-        assertNotNull(heatBeatCron.getConfig());
+        assertNotNull(heatBeatCron.getHeartBeatConfig());
     }
 
     @Test
     public void isDown() throws InterruptedException {
-        heatBeatCron.getConfig().setNumberOfBrokers(4);
+        heatBeatCron.getHeartBeatConfig().setNumberOfBrokers(4);
         heatBeatCron.cron();
-        Thread.sleep(5000);
-        assertEquals(5, heatBeatCron.getFailCount());
+        Thread.sleep(3000);
+        assertTrue(heatBeatCron.getFailCount() > 0);
+        assertEquals(0, heatBeatCron.getPassCount());
         heatBeatCron.stop();
     }
 
     @Test
     public void isUp() throws InterruptedException {
         heatBeatCron.cron();
-        Thread.sleep(5000);
-        assertEquals(5, heatBeatCron.getPassCount());
+        Thread.sleep(3000);
+        assertTrue(heatBeatCron.getPassCount() > 0);
+        assertEquals(0, heatBeatCron.getFailCount());
         heatBeatCron.stop();
     }
 
@@ -43,7 +44,7 @@ class HeatBeatCronTest {
     public void isUpThenDown() throws InterruptedException {
         heatBeatCron.cron();
         Thread.sleep(2000);
-        heatBeatCron.getConfig().setNumberOfBrokers(4);
+        heatBeatCron.getHeartBeatConfig().setNumberOfBrokers(4);
         Thread.sleep(3000);
         assertEquals(0, heatBeatCron.getPassCount());
         assertEquals(3, heatBeatCron.getFailCount());

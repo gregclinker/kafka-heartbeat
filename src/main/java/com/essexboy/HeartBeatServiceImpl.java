@@ -5,17 +5,15 @@ import lombok.Getter;
 import lombok.ToString;
 import org.apache.kafka.clients.admin.AdminClient;
 
-import java.util.Properties;
-
 @Getter
 @AllArgsConstructor
 @ToString
 public class HeartBeatServiceImpl implements HeatBeatService {
 
-    private Config config;
+    private HeartBeatConfig heartBeatConfig;
 
     private AdminClient getAdminClient() {
-        return AdminClient.create(config.getKafkaProperties());
+        return AdminClient.create(heartBeatConfig.getKafkaProperties());
     }
 
     @Override
@@ -23,7 +21,7 @@ public class HeartBeatServiceImpl implements HeatBeatService {
         final AdminClient adminClient = getAdminClient();
         final int brokerCount = adminClient.describeCluster().nodes().get().size();
         adminClient.close();
-        return config.getNumberOfBrokers() == brokerCount;
+        return heartBeatConfig.getNumberOfBrokers() == brokerCount;
     }
 
     @Override

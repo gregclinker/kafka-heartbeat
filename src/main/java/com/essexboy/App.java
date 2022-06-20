@@ -1,30 +1,24 @@
 package com.essexboy;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.FileInputStream;
 
-/**
- * Hello world!
- */
 public class App {
-    public static void main(String[] args) {
 
+    final static Logger LOGGER = LoggerFactory.getLogger(App.class);
+
+    public static void main(String[] args) {
         try {
             if (args.length == 1) {
                 final HeatBeatCron heatbeatCron = new HeatBeatCron(new FileInputStream(args[0]));
                 heatbeatCron.cron();
             } else {
-                help();
+                LOGGER.error("usage : java -jar kafka-heartbeat.jar <config file>");
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            help();
+            LOGGER.error("error", e);
         }
-    }
-
-    private static void help() {
-        System.out.println("");
-        System.out.println("usage : java -jar kafka-heartbeat.jar <config file>");
-        System.out.println("");
-        System.exit(0);
     }
 }

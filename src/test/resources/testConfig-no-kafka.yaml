@@ -1,0 +1,9 @@
+---
+numberOfBrokers: 3
+interval: 1
+standardIsr: 3
+reducedIsr: 2
+failuresToSwitch: 3
+topics:
+  - greg_test1
+  - greg_test2
