@@ -11,7 +11,7 @@ public class App {
 
     public static void main(String[] args) {
         try {
-            final HeatBeatCron heatbeatCron = new HeatBeatCron(new FileInputStream("heartbeat-config-full.yaml"));
+            final HeatBeatCron heatbeatCron = new HeatBeatCron(new FileInputStream("heartbeat-config.yaml"));
             heatbeatCron.cron();
         } catch (Exception e) {
             LOGGER.error("error", e);
