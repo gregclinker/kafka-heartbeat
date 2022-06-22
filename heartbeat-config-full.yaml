@@ -1,6 +1,6 @@
 ---
 numberOfBrokers: 3
-interval: 1
+interval: 3
 standardIsr: 2
 reducedIsr: 1
 countToSwitch: 2

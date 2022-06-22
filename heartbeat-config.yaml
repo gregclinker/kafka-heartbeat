@@ -1,9 +1,9 @@
 ---
 numberOfBrokers: 3
-interval: 1
-standardIsr: 3
-reducedIsr: 2
-countToSwitch: 3
+interval: 5
+standardIsr: 2
+reducedIsr: 1
+countToSwitch: 2
 topics:
   - greg-test1
   - greg-test2

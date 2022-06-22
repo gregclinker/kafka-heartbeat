@@ -9,6 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,11 +22,14 @@ import java.util.Properties;
 @ToString
 @NoArgsConstructor
 public class HeartBeatConfig {
+
+    final static Logger LOGGER = LoggerFactory.getLogger(HeartBeatConfig.class);
+
     private int numberOfBrokers;
     private int interval;
     private int standardIsr;
     private int reducedIsr;
-    private int failuresToSwitch;
+    private int countToSwitch;
     private Properties kafkaProperties;
     private List<String> topics;
 
@@ -37,18 +42,23 @@ public class HeartBeatConfig {
         this.interval = heartBeatConfig.getInterval();
         this.standardIsr = heartBeatConfig.getStandardIsr();
         this.reducedIsr = heartBeatConfig.getReducedIsr();
-        this.failuresToSwitch = heartBeatConfig.getFailuresToSwitch();
-        this.kafkaProperties = heartBeatConfig.getKafkaProperties();
+        this.countToSwitch = heartBeatConfig.getCountToSwitch();
         this.topics = heartBeatConfig.getTopics();
 
-        for (Object key : System.getProperties().keySet()) {
-            String property = key.toString();
-            if (property.startsWith("KAFKA_")) {
-                if (kafkaProperties == null) {
-                    kafkaProperties = new Properties();
+
+        if (heartBeatConfig.getKafkaProperties() == null) {
+            for (Object key : System.getProperties().keySet()) {
+                String property = key.toString();
+                if (property.startsWith("KAFKA_")) {
+                    if (kafkaProperties == null) {
+                        kafkaProperties = new Properties();
+                    }
+                    kafkaProperties.put(property.replaceAll("KAFKA_", "").replaceAll("_", ".").toLowerCase(), System.getProperty(key.toString()));
                 }
-                kafkaProperties.put(property.replaceAll("KAFKA_", "").replaceAll("_", ".").toLowerCase(), System.getProperty(key.toString()));
             }
+            LOGGER.info("created kafka properties from system properties {}", kafkaProperties);
+        } else {
+            this.kafkaProperties = heartBeatConfig.getKafkaProperties();
         }
     }
 }

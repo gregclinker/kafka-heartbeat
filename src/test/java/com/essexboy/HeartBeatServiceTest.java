@@ -9,15 +9,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class HeatBeatServiceTest {
+class HeartBeatServiceTest {
 
     @Mock
-    private HeatBeatService heatBeatService;
+    private HeartBeatService heartBeatService;
 
     @Test
     void isUp() throws Exception {
-        when(heatBeatService.isUp()).thenReturn(true);
-        assertTrue(heatBeatService.isUp());
+        when(heartBeatService.isUp()).thenReturn(true);
+        assertTrue(heartBeatService.isUp());
     }
 
     @Test

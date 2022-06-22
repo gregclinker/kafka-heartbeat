@@ -11,14 +11,11 @@ public class App {
 
     public static void main(String[] args) {
         try {
-            if (args.length == 1) {
-                final HeatBeatCron heatbeatCron = new HeatBeatCron(new FileInputStream(args[0]));
-                heatbeatCron.cron();
-            } else {
-                LOGGER.error("usage : java -jar kafka-heartbeat.jar <config file>");
-            }
+            final HeatBeatCron heatbeatCron = new HeatBeatCron(new FileInputStream("heartbeat-config-full.yaml"));
+            heatbeatCron.cron();
         } catch (Exception e) {
             LOGGER.error("error", e);
+            System.exit(-1);
         }
     }
 }
