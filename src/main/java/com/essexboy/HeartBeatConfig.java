@@ -1,10 +1,7 @@
 package com.essexboy;
 
-import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,8 +9,6 @@ import lombok.ToString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
 import java.util.Properties;
 
@@ -33,32 +28,19 @@ public class HeartBeatConfig {
     private Properties kafkaProperties;
     private List<String> topics;
 
-    public HeartBeatConfig(InputStream inputStream) throws IOException {
-        ObjectMapper mapper = new ObjectMapper(new YAMLFactory().disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER));
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        mapper.configure(JsonParser.Feature.AUTO_CLOSE_SOURCE, true);
-        final HeartBeatConfig heartBeatConfig = mapper.readValue(inputStream, HeartBeatConfig.class);
-        this.numberOfBrokers = heartBeatConfig.getNumberOfBrokers();
-        this.interval = heartBeatConfig.getInterval();
-        this.standardIsr = heartBeatConfig.getStandardIsr();
-        this.reducedIsr = heartBeatConfig.getReducedIsr();
-        this.countToSwitch = heartBeatConfig.getCountToSwitch();
-        this.topics = heartBeatConfig.getTopics();
-
-
-        if (heartBeatConfig.getKafkaProperties() == null) {
-            for (Object key : System.getProperties().keySet()) {
-                String property = key.toString();
-                if (property.startsWith("KAFKA_")) {
-                    if (kafkaProperties == null) {
-                        kafkaProperties = new Properties();
-                    }
-                    kafkaProperties.put(property.replaceAll("KAFKA_", "").replaceAll("_", ".").toLowerCase(), System.getProperty(key.toString()));
-                }
-            }
-            LOGGER.info("created kafka properties from system properties {}", kafkaProperties);
-        } else {
-            this.kafkaProperties = heartBeatConfig.getKafkaProperties();
+    public static HeartBeatConfig getConfig() throws JsonProcessingException {
+        if (System.getenv("HEART_BEAT_CONFIG") == null) {
+            throw new RuntimeException("ERROR HEART_BEAT_CONFIG env is not set");
         }
+        final HeartBeatConfig heartBeatConfig = new ObjectMapper().readValue(System.getenv("HEART_BEAT_CONFIG"), HeartBeatConfig.class);
+        Properties properties = new Properties();
+        System.getenv().keySet().stream().filter(key -> key.toString().startsWith("KAFKA_")).forEach(key -> {
+            String kafkaProperty = key.replace("KAFKA_", "").replace("_", ".").toLowerCase();
+            properties.put(kafkaProperty, System.getenv(key));
+        });
+        heartBeatConfig.setKafkaProperties(properties);
+        LOGGER.debug("created config {}", heartBeatConfig);
+        return heartBeatConfig;
     }
 }
+

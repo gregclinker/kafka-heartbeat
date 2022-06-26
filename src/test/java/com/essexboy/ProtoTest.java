@@ -1,46 +1,57 @@
 package com.essexboy;
 
-import org.apache.kafka.clients.admin.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AlterConfigOp;
+import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junitpioneer.jupiter.ClearEnvironmentVariable;
+import org.junitpioneer.jupiter.SetEnvironmentVariable;
 
 import java.io.IOException;
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 public class ProtoTest {
 
-    @BeforeAll
-    private static void init() {
-        System.setProperty("KAFKA_BOOTSTRAP_SERVERS", "172.31.0.6:29092,172.31.0.5:29093,172.31.0.7:29094");
-        System.setProperty("KAFKA_SECURITY_PROTOCOL", "SSL");
-        System.setProperty("KAFKA_SSL_TRUSTSTORE_LOCATION", "/home/greg/work/kafka-heartbeat/secrets/kafka_truststore.jks");
-        System.setProperty("KAFKA_SSL_TRUSTSTORE_PASSWORD", "confluent");
-        System.setProperty("KAFKA_SSL_KEYSTORE_LOCATION", "/home/greg/work/kafka-heartbeat/secrets/kafka_keystore.jks");
-        System.setProperty("KAFKA_SSL_KEYSTORE_PASSWORD", "confluent");
-        System.setProperty("KAFKA_SSL_KEY_PASSWORD", "confluent");
-        System.setProperty("KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM", " ");
-        System.setProperty("KAFKA_SSL_TEST_SYSTEM_PROPERTY", "test-from-system-property");
-    }
+    @Test
+    @SetEnvironmentVariable(key = "KAFKA_BOOTSTRAP_SERVERS", value = "172.31.0.6:29092,172.31.0.5:29093,172.31.0.7:29094")
+    @SetEnvironmentVariable(key = "KAFKA_SECURITY_PROTOCOL", value = "SSL")
+    @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_LOCATION", value = "/home/greg/work/kafka-heartbeat/secrets/kafka_truststore.jks")
+    @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_PASSWORD", value = "confluent")
+    @SetEnvironmentVariable(key = "KAFKA_SSL_KEYSTORE_LOCATION", value = "/home/greg/work/kafka-heartbeat/secrets/kafka_keystore.jks")
+    @SetEnvironmentVariable(key = "KAFKA_SSL_KEYSTORE_PASSWORD", value = "confluent")
+    @SetEnvironmentVariable(key = "KAFKA_SSL_KEY_PASSWORD", value = "confluent")
+    @SetEnvironmentVariable(key = "KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM", value = " ")
+    @ClearEnvironmentVariable(key = "HEART_BEAT_CONFIG")
+    @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":10,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"kafkaProperties\":null,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
+    public void test2() throws JsonProcessingException {
 
-    //@Test
-    public void test1() throws Exception {
-        final HeartBeatConfig heartBeatConfig = new HeartBeatConfig(getClass().getResourceAsStream("/testConfig-no-kafka.yaml"));
-        final HeartBeatService heartBeatService = new HeartBeatService(heartBeatConfig);
+        System.getenv().keySet().stream().forEach( key -> {
+            System.out.println(key);
+        });
 
-        //heartBeatService.setMinIsr("greg-test1", 2);
-        //assertEquals(2, heartBeatService.getMinIsr("greg-test1"));
-        //heartBeatService.setMinIsr("greg-test1", 1);
-        //assertEquals(1, heartBeatService.getMinIsr("greg-test1"));
-        //heartBeatService.setMinIsr("greg-test1", 2);
-        //assertEquals(2, heartBeatService.getMinIsr("greg-test1"));
+        System.out.println("xxx");
+
+        System.out.println(HeartBeatConfig.getConfig());
+
+        final HeartBeatConfig heartBeatConfig1 = new ObjectMapper().readValue(System.getenv("HEART_BEAT_CONFIG"), HeartBeatConfig.class);
+        System.out.println(heartBeatConfig1);
+
+        Properties properties = new Properties();
+        System.getenv().keySet().stream().filter(key -> key.toString().startsWith("KAFKA_")).forEach(key -> {
+            String kafkaProperty = key.replace("KAFKA_", "").replace("_", ".").toLowerCase();
+            properties.put(kafkaProperty, System.getenv(key));
+        });
+        System.out.println(properties);
+
     }
 
     private AdminClient getAdminClient() throws IOException {
-        final HeartBeatConfig heartBeatConfig = new HeartBeatConfig(getClass().getResourceAsStream("/testConfig-no-kafka.yaml"));
+        final HeartBeatConfig heartBeatConfig = HeartBeatConfig.getConfig();
         final AdminClient client = AdminClient.create(heartBeatConfig.getKafkaProperties());
         return client;
     }

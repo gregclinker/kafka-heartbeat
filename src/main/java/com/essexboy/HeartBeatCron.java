@@ -6,15 +6,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Timer;
 import java.util.TimerTask;
 
 @Getter
 @ToString
-public class HeatBeatCron extends TimerTask {
+public class HeartBeatCron extends TimerTask {
 
-    final static Logger LOGGER = LoggerFactory.getLogger(HeatBeatCron.class);
+    final static Logger LOGGER = LoggerFactory.getLogger(HeartBeatCron.class);
 
     private final Timer timer = new Timer();
     private final HeartBeatConfig heartBeatConfig;
@@ -23,8 +22,8 @@ public class HeatBeatCron extends TimerTask {
     private int passCount = 0;
     private boolean switchedDown = false;
 
-    public HeatBeatCron(InputStream inputStream) throws IOException {
-        this.heartBeatConfig = new HeartBeatConfig(inputStream);
+    public HeartBeatCron() throws IOException {
+        this.heartBeatConfig = HeartBeatConfig.getConfig();
         this.heartBeatService = new HeartBeatService(heartBeatConfig);
     }
 
