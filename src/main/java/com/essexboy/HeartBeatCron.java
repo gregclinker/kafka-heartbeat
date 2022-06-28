@@ -19,12 +19,13 @@ public class HeartBeatCron extends TimerTask {
     private final HeartBeatConfig heartBeatConfig;
     private final HeartBeatService heartBeatService;
     private int failCount = 0;
-    private int passCount = 0;
+    private int passCount;
     private boolean switchedDown = false;
 
     public HeartBeatCron() throws IOException {
         this.heartBeatConfig = HeartBeatConfig.getConfig();
         this.heartBeatService = new HeartBeatService(heartBeatConfig);
+        passCount=heartBeatConfig.getCountToSwitch();
     }
 
     /**

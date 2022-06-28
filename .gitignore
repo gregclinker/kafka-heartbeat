@@ -10,3 +10,6 @@ target
 build
 .gradle
 dependency-reduced-pom.xml
+kafka1
+kafka2
+kafka3

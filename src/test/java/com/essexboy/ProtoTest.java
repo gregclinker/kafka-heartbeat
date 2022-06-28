@@ -29,25 +29,8 @@ public class ProtoTest {
     @ClearEnvironmentVariable(key = "HEART_BEAT_CONFIG")
     @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":10,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"kafkaProperties\":null,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
     public void test2() throws JsonProcessingException {
-
-        System.getenv().keySet().stream().forEach( key -> {
-            System.out.println(key);
-        });
-
-        System.out.println("xxx");
-
-        System.out.println(HeartBeatConfig.getConfig());
-
-        final HeartBeatConfig heartBeatConfig1 = new ObjectMapper().readValue(System.getenv("HEART_BEAT_CONFIG"), HeartBeatConfig.class);
-        System.out.println(heartBeatConfig1);
-
-        Properties properties = new Properties();
-        System.getenv().keySet().stream().filter(key -> key.toString().startsWith("KAFKA_")).forEach(key -> {
-            String kafkaProperty = key.replace("KAFKA_", "").replace("_", ".").toLowerCase();
-            properties.put(kafkaProperty, System.getenv(key));
-        });
-        System.out.println(properties);
-
+        final HeartBeatConfig heartBeatConfig = new ObjectMapper().readValue(System.getenv("HEART_BEAT_CONFIG"), HeartBeatConfig.class);
+        System.out.println(heartBeatConfig);
     }
 
     private AdminClient getAdminClient() throws IOException {
