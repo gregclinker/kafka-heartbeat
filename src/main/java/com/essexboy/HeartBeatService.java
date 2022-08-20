@@ -2,17 +2,16 @@ package com.essexboy;
 
 import lombok.Getter;
 import lombok.ToString;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AlterConfigOp;
-import org.apache.kafka.clients.admin.Config;
-import org.apache.kafka.clients.admin.ConfigEntry;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.common.KafkaFuture;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Getter
 @ToString
@@ -35,15 +34,22 @@ public class HeartBeatService {
         return AdminClient.create(kafkaProperties);
     }
 
-    public boolean isUp() throws Exception {
+    public List<Integer> getAvailableBrokers() throws Exception {
         final AdminClient adminClient = getAdminClient();
-        final int brokerCount = adminClient.describeCluster().nodes().get().size();
+        final List<Integer> brokers = getAdminClient().describeCluster().nodes().get().stream().map(n -> n.id()).sorted().collect(Collectors.toList());
         adminClient.close();
-        return heartBeatConfig.getNumberOfBrokers() == brokerCount;
+        return brokers;
     }
 
-    public boolean isRebalancing() {
-        //TO DO
+    public boolean rebalance() {
+        for (String topic : heartBeatConfig.getTopics()) {
+            LOGGER.info("rebalancing, topic {} to available replicas", topic);
+            try {
+                partitionReassignment(topic, getAvailableBrokers());
+            } catch (Exception e) {
+                LOGGER.error("error rebalancing topic {}", topic, e);
+            }
+        }
         return false;
     }
 
@@ -117,4 +123,42 @@ public class HeartBeatService {
         }
         return 0;
     }
+
+    private void partitionReassignment(String topicName, Integer partition, List<Integer> replicas) throws Exception {
+        if (getReplicas(topicName, partition).equals(replicas)) {
+            LOGGER.info("replicas already set to {} for topic {}, partition {}", replicas, topicName, partition);
+            return;
+        }
+        final AdminClient adminClient = getAdminClient();
+        Map<TopicPartition, Optional<NewPartitionReassignment>> topicPartitionOptionalHashMap = new HashMap<>();
+        topicPartitionOptionalHashMap.put(new TopicPartition(topicName, partition), Optional.of(new NewPartitionReassignment(replicas)));
+        adminClient.alterPartitionReassignments(topicPartitionOptionalHashMap).all().get();
+        LOGGER.info("replicas set to {} for topic {}, partition {}", replicas, topicName, partition);
+    }
+
+    private void partitionReassignment(String topicName, List<Integer> replicas) throws Exception {
+        for (Integer partition : getPartitions(topicName)) {
+            partitionReassignment(topicName, partition, replicas);
+        }
+    }
+
+    private List<Integer> getPartitions(String topicName) throws Exception {
+        final AdminClient adminClient = getAdminClient();
+        final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
+        return topicDescription.partitions().stream().map(p -> p.partition()).sorted().collect(Collectors.toList());
+    }
+
+    private List<Integer> getReplicas(String topicName, Integer partition) throws Exception {
+        final AdminClient adminClient = getAdminClient();
+        final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
+        return topicDescription.partitions().get(partition).replicas().stream().map(r -> r.id()).sorted().collect(Collectors.toList());
+    }
+
+    private Integer getLeader(String topicName, Integer partition) throws Exception {
+        final AdminClient adminClient = getAdminClient();
+        final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
+        return topicDescription.partitions().get(partition).leader().id();
+    }
+
+
 }

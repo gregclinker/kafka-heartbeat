@@ -15,12 +15,6 @@ class HeartBeatServiceTest {
     private HeartBeatService heartBeatService;
 
     @Test
-    void isUp() throws Exception {
-        when(heartBeatService.isUp()).thenReturn(true);
-        assertTrue(heartBeatService.isUp());
-    }
-
-    @Test
     void isRebalancing() {
     }
 

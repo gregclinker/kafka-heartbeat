@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -25,7 +26,7 @@ public class HeartBeatCron extends TimerTask {
     public HeartBeatCron() throws IOException {
         this.heartBeatConfig = HeartBeatConfig.getConfig();
         this.heartBeatService = new HeartBeatService(heartBeatConfig);
-        passCount=heartBeatConfig.getCountToSwitch();
+        passCount = heartBeatConfig.getCountToSwitch();
     }
 
     /**
@@ -46,8 +47,9 @@ public class HeartBeatCron extends TimerTask {
     @Override
     public void run() {
         try {
-            final boolean up = heartBeatService.isUp();
-            LOGGER.debug("run, isUp {}", up);
+            final List<Integer> availableBrokers = heartBeatService.getAvailableBrokers();
+            final boolean up = availableBrokers.size() >= heartBeatConfig.getNumberOfBrokers();
+            LOGGER.debug("run, isUp {}, available brokers {}", up, availableBrokers);
             if (up) {
                 passCount++;
                 failCount = 0;
@@ -57,8 +59,10 @@ public class HeartBeatCron extends TimerTask {
             }
             if (failCount == heartBeatConfig.getCountToSwitch()) {
                 heartBeatService.switchIsrDown();
+                heartBeatService.rebalance();
             } else if (passCount == heartBeatConfig.getCountToSwitch()) {
                 heartBeatService.switchIsrBack();
+                heartBeatService.rebalance();
             }
         } catch (Exception e) {
             LOGGER.error("cron error, stopping heartbeat", e);
