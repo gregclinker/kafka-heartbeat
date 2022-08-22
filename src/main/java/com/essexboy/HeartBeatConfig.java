@@ -1,6 +1,5 @@
 package com.essexboy;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
@@ -28,6 +27,10 @@ public class HeartBeatConfig {
     private int countToSwitch;
     private Properties kafkaProperties;
     private List<String> topics;
+    private boolean rebalanceUp = false;
+    private int rebalanceUpDelay = 1;
+    private boolean rebalanceDown = false;
+    private int rebalanceDownDelay = 1;
 
     public static HeartBeatConfig getConfig() throws JsonProcessingException {
         if (System.getenv("HEART_BEAT_CONFIG") == null) {
@@ -40,6 +43,12 @@ public class HeartBeatConfig {
             properties.put(kafkaProperty, System.getenv(key));
         });
         heartBeatConfig.setKafkaProperties(properties);
+        if (System.getenv("REBALANCE_DOWN") != null) {
+            heartBeatConfig.setRebalanceDown(Boolean.parseBoolean(System.getenv("REBALANCE_DOWN").toLowerCase()));
+        }
+        if (System.getenv("REBALANCE_UP") != null) {
+            heartBeatConfig.setRebalanceUp(Boolean.parseBoolean(System.getenv("REBALANCE_UP").toLowerCase()));
+        }
         LOGGER.debug("created config {}", heartBeatConfig);
         return heartBeatConfig;
     }

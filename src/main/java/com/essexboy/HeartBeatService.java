@@ -2,6 +2,7 @@ package com.essexboy;
 
 import lombok.Getter;
 import lombok.ToString;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
@@ -35,25 +36,6 @@ public class HeartBeatService {
         return AdminClient.create(kafkaProperties);
     }
 
-    public List<Integer> getAvailableBrokers() throws Exception {
-        final AdminClient adminClient = getAdminClient();
-        final List<Integer> brokers = getAdminClient().describeCluster().nodes().get().stream().map(n -> n.id()).sorted().collect(Collectors.toList());
-        adminClient.close();
-        return brokers;
-    }
-
-    public boolean rebalance() {
-        for (String topic : heartBeatConfig.getTopics()) {
-            LOGGER.info("rebalancing, topic {} to available replicas", topic);
-            try {
-                partitionReassignment(topic, getAvailableBrokers());
-            } catch (Exception e) {
-                LOGGER.error("error rebalancing topic {}", topic, e);
-            }
-        }
-        return false;
-    }
-
     public void switchIsrDown() {
         LOGGER.info("swicthIsrDown");
         switchIsr(heartBeatConfig.getReducedIsr());
@@ -62,6 +44,30 @@ public class HeartBeatService {
     public void switchIsrBack() {
         LOGGER.info("switchIsrBack");
         switchIsr(heartBeatConfig.getStandardIsr());
+    }
+
+    public boolean rebalanceDown() {
+        for (String topic : heartBeatConfig.getTopics()) {
+            LOGGER.info("rebalancing, topic {} to available replicas", topic);
+            try {
+                partitionReassignment(topic, false);
+            } catch (Exception e) {
+                LOGGER.error("error rebalancing topic {}", topic, e);
+            }
+        }
+        return false;
+    }
+
+    public boolean rebalanceUp() {
+        for (String topic : heartBeatConfig.getTopics()) {
+            LOGGER.info("rebalancing, topic {} to available replicas", topic);
+            try {
+                partitionReassignment(topic, true);
+            } catch (Exception e) {
+                LOGGER.error("error rebalancing topic {}", topic, e);
+            }
+        }
+        return false;
     }
 
     private void switchIsr(int newIsr) {
@@ -125,6 +131,29 @@ public class HeartBeatService {
         return 0;
     }
 
+    private List<Integer> getRebalanceReplicas(Integer leader, Integer partition, boolean extend) {
+        List<Integer> brokers = new ArrayList<>();
+        if (leader <= 3) {
+            CollectionUtils.addAll(brokers, Arrays.asList(1, 2, 3));
+            if (extend) {
+                brokers.add(4 + (partition % 3));
+            }
+        } else {
+            CollectionUtils.addAll(brokers, Arrays.asList(4, 5, 6));
+            if (extend) {
+                brokers.add(1 + (partition % 3));
+            }
+        }
+        return orderLeaderFirst(brokers, leader);
+    }
+
+    public List<Integer> getAvailableBrokers() throws Exception {
+        final AdminClient adminClient = getAdminClient();
+        final List<Integer> brokers = getAdminClient().describeCluster().nodes().get().stream().map(n -> n.id()).sorted().collect(Collectors.toList());
+        adminClient.close();
+        return brokers;
+    }
+
     private void partitionReassignment(String topicName, Integer partition, List<Integer> replicas) throws Exception {
         if (getReplicas(topicName, partition).equals(replicas)) {
             LOGGER.info("replicas already set to {} for topic {}, partition {}", replicas, topicName, partition);
@@ -142,11 +171,17 @@ public class HeartBeatService {
 
     }
 
-    private void partitionReassignment(String topicName, List<Integer> replicas) throws Exception {
+    private void partitionReassignment(String topicName, boolean extend) throws Exception {
         for (Integer partition : getPartitions(topicName)) {
             final Integer leader = getLeader(topicName, partition);
             if (leader != null) {
-                partitionReassignment(topicName, partition, orderLeaderFirst(replicas, leader));
+                final List<Integer> replicas = getRebalanceReplicas(leader, partition, extend);
+                partitionReassignment(topicName, partition, replicas);
+                if (extend) {
+                    Thread.sleep(heartBeatConfig.getRebalanceUpDelay() * 1000);
+                } else {
+                    Thread.sleep(heartBeatConfig.getRebalanceDownDelay() * 1000);
+                }
             }
         }
     }

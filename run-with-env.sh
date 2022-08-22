@@ -6,6 +6,8 @@ export KAFKA_SSL_KEYSTORE_LOCATION="/home/greg/work/kafka-heartbeat/secrets/kafk
 export KAFKA_SSL_KEYSTORE_PASSWORD="confluent"
 export KAFKA_SSL_KEY_PASSWORD="confluent"
 export KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM=" "
-export HEART_BEAT_CONFIG="{\"numberOfBrokers\":4,\"interval\":10,\"standardIsr\":3,\"reducedIsr\":2,\"countToSwitch\":3,\"topics\":[\"greg-test1\",\"greg-test2\"]}"
+export REBALANCE_UP="TRUE"
+export REBALANCE_DOWN="TRUE"
+export HEART_BEAT_CONFIG="{\"numberOfBrokers\":4,\"interval\":10,\"standardIsr\":3,\"reducedIsr\":2,\"rebalanceUpDelay\":10,\"countToSwitch\":3,\"topics\":[\"greg-test1\",\"greg-test2\"]}"
 
 java -jar target/kafka-heartbeat-0.1.jar

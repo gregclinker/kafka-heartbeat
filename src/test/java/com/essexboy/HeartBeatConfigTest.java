@@ -5,8 +5,7 @@ import org.junitpioneer.jupiter.SetEnvironmentVariable;
 
 import java.io.IOException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 class HeartBeatConfigTest {
 
@@ -20,6 +19,8 @@ class HeartBeatConfigTest {
     @SetEnvironmentVariable(key = "KAFKA_SSL_KEY_PASSWORD", value = "confluent")
     @SetEnvironmentVariable(key = "KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM", value = " ")
     @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":10,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
+    @SetEnvironmentVariable(key = "REBALANCE_DOWN", value = "TRUE")
+    @SetEnvironmentVariable(key = "REBALANCE_UP", value = "FALSE")
     public void formProperties() throws IOException {
         final HeartBeatConfig config = HeartBeatConfig.getConfig();
         assertNotNull(config);
@@ -38,5 +39,7 @@ class HeartBeatConfigTest {
         assertEquals(" ", config.getKafkaProperties().getProperty("ssl.endpoint.identification.algorithm"));
         assertEquals("/home/greg/work/kafka-heartbeat/secrets/kafka_keystore.jks", config.getKafkaProperties().getProperty("ssl.keystore.location"));
         assertEquals("/home/greg/work/kafka-heartbeat/secrets/kafka_truststore.jks", config.getKafkaProperties().getProperty("ssl.truststore.location"));
+        assertTrue(config.isRebalanceDown());
+        assertFalse(config.isRebalanceUp());
     }
 }
