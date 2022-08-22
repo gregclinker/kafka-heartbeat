@@ -62,7 +62,7 @@ public class HeartBeatCron extends TimerTask {
                 heartBeatService.rebalance();
             } else if (passCount == heartBeatConfig.getCountToSwitch()) {
                 heartBeatService.switchIsrBack();
-                heartBeatService.rebalance();
+                //heartBeatService.rebalance();
             }
         } catch (Exception e) {
             LOGGER.error("cron error, stopping heartbeat", e);

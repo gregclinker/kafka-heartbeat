@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.ToString;
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.common.KafkaFuture;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
@@ -130,35 +131,64 @@ public class HeartBeatService {
             return;
         }
         final AdminClient adminClient = getAdminClient();
-        Map<TopicPartition, Optional<NewPartitionReassignment>> topicPartitionOptionalHashMap = new HashMap<>();
-        topicPartitionOptionalHashMap.put(new TopicPartition(topicName, partition), Optional.of(new NewPartitionReassignment(replicas)));
-        adminClient.alterPartitionReassignments(topicPartitionOptionalHashMap).all().get();
-        LOGGER.info("replicas set to {} for topic {}, partition {}", replicas, topicName, partition);
+        try {
+            Map<TopicPartition, Optional<NewPartitionReassignment>> topicPartitionOptionalHashMap = new HashMap<>();
+            topicPartitionOptionalHashMap.put(new TopicPartition(topicName, partition), Optional.of(new NewPartitionReassignment(replicas)));
+            adminClient.alterPartitionReassignments(topicPartitionOptionalHashMap).all().get();
+            LOGGER.info("replicas set to {} for topic {}, partition {}", replicas, topicName, partition);
+        } finally {
+            adminClient.close();
+        }
+
     }
 
     private void partitionReassignment(String topicName, List<Integer> replicas) throws Exception {
         for (Integer partition : getPartitions(topicName)) {
-            partitionReassignment(topicName, partition, replicas);
+            final Integer leader = getLeader(topicName, partition);
+            if (leader != null) {
+                partitionReassignment(topicName, partition, orderLeaderFirst(replicas, leader));
+            }
         }
     }
 
     private List<Integer> getPartitions(String topicName) throws Exception {
         final AdminClient adminClient = getAdminClient();
-        final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
-        return topicDescription.partitions().stream().map(p -> p.partition()).sorted().collect(Collectors.toList());
+        try {
+            final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
+            return topicDescription.partitions().stream().map(p -> p.partition()).sorted().collect(Collectors.toList());
+        } finally {
+            adminClient.close();
+        }
     }
 
     private List<Integer> getReplicas(String topicName, Integer partition) throws Exception {
         final AdminClient adminClient = getAdminClient();
-        final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
-        return topicDescription.partitions().get(partition).replicas().stream().map(r -> r.id()).sorted().collect(Collectors.toList());
+        try {
+            final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
+            return topicDescription.partitions().get(partition).replicas().stream().map(r -> r.id()).sorted().collect(Collectors.toList());
+        } finally {
+            adminClient.close();
+        }
     }
 
     private Integer getLeader(String topicName, Integer partition) throws Exception {
         final AdminClient adminClient = getAdminClient();
-        final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
-        return topicDescription.partitions().get(partition).leader().id();
+        try {
+            final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
+            final Node leader = topicDescription.partitions().get(partition).leader();
+            if (leader == null) {
+                LOGGER.error("no leader found for {}, partition {}", topicName, partition);
+                return null;
+            }
+            return leader.id();
+        } finally {
+            adminClient.close();
+        }
     }
 
-
+    private List<Integer> orderLeaderFirst(List<Integer> replicas, Integer leader) {
+        final List<Integer> newReplicas = replicas.stream().filter(i -> !i.equals(leader)).collect(Collectors.toList());
+        newReplicas.add(0, leader);
+        return newReplicas;
+    }
 }

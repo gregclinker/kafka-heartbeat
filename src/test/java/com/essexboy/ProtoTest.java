@@ -1,6 +1,8 @@
 package com.essexboy;
 
 import org.apache.kafka.clients.admin.*;
+import org.apache.kafka.common.ElectionType;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
@@ -14,7 +16,7 @@ import java.util.stream.Collectors;
 public class ProtoTest {
 
     @Test
-    @SetEnvironmentVariable(key = "KAFKA_BOOTSTRAP_SERVERS", value = "172.31.0.5:29092,172.31.0.6:29093,172.31.0.7:29094")
+    @SetEnvironmentVariable(key = "KAFKA_BOOTSTRAP_SERVERS", value = "172.31.0.9:29092,172.31.0.5:29093,172.31.0.10:29094,172.31.0.6:29095,172.31.0.8:29096,172.31.0.7:29097")
     @SetEnvironmentVariable(key = "KAFKA_SECURITY_PROTOCOL", value = "SSL")
     @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_LOCATION", value = "/home/greg/work/kafka-heartbeat/secrets/kafka_truststore.jks")
     @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_PASSWORD", value = "confluent")
@@ -24,11 +26,21 @@ public class ProtoTest {
     @SetEnvironmentVariable(key = "KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM", value = " ")
     @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":10,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"kafkaProperties\":null,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
     public void test2() throws Exception {
+        HashSet<TopicPartition> topicSet = new HashSet();
+        topicSet.add(new TopicPartition("greg-test1", 0));
+        topicSet.add(new TopicPartition("greg-test1", 1));
+        topicSet.add(new TopicPartition("greg-test1", 2));
+        topicSet.add(new TopicPartition("greg-test1", 3));
+        topicSet.add(new TopicPartition("greg-test1", 4));
+        getAdminClient().electLeaders(ElectionType.PREFERRED, topicSet).all();
+        //partitionReassignment("greg-test1", Arrays.asList(5,2,3,4));
 
-        System.out.println(getAdminClient().describeCluster().nodes().get().stream().map(n -> n.id()).sorted().collect(Collectors.toList()));
+        }
 
-        //partitionReassignment("greg-test1", Arrays.asList(1,2,3));
-        //isPartitionReassignment("greg-test1", 0);
+    private List<Integer> orderLeaderFirst(List<Integer> replicas, Integer leader) {
+        final List<Integer> newReplicas = replicas.stream().filter(i -> !i.equals(leader)).collect(Collectors.toList());
+        newReplicas.add(0, leader);
+        return newReplicas;
     }
 
     private void partitionReassignment(String topicName, Integer partition, List<Integer> replicas) throws Exception {

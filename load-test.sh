@@ -3,5 +3,5 @@
 	 --num-records 100000 \
 	 --record-size 1024 \
 	 --print-metrics \
-	 --throughput -1 \
+	 --throughput 50 \
 	 --producer-props bootstrap.servers=${KAFKA1}:9092,${KAFKA2}:9093,${KAFKA3}:9094
