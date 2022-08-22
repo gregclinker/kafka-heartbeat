@@ -38,7 +38,11 @@ public class HeartBeatService {
 
     public void switchIsrDown() {
         LOGGER.info("swicthIsrDown");
-        switchIsr(heartBeatConfig.getReducedIsr());
+        if (heartBeatConfig.isFastMinIsr()) {
+            switchIsr(1);
+        } else {
+            switchIsr(heartBeatConfig.getReducedIsr());
+        }
     }
 
     public void switchIsrBack() {
@@ -54,6 +58,9 @@ public class HeartBeatService {
             } catch (Exception e) {
                 LOGGER.error("error rebalancing topic {}", topic, e);
             }
+        }
+        if (heartBeatConfig.isFastMinIsr()) {
+            switchIsr(heartBeatConfig.getReducedIsr());
         }
         return false;
     }
