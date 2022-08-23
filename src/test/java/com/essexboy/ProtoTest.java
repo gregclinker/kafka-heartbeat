@@ -2,12 +2,13 @@ package com.essexboy;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.kafka.clients.admin.*;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.TopicPartitionInfo;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
 import org.junit.jupiter.api.Test;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
-import org.junitpioneer.jupiter.StdOut;
 
 import java.io.IOException;
 import java.util.*;
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
 public class ProtoTest {
 
     @Test
-    @SetEnvironmentVariable(key = "KAFKA_BOOTSTRAP_SERVERS", value = "172.31.0.8:9092,172.31.0.9:9093,172.31.0.7:9094,172.31.0.5:9095,172.31.0.6:9096,172.31.0.10:9097")
+    @SetEnvironmentVariable(key = "KAFKA_BOOTSTRAP_SERVERS", value = "172.18.0.5:9092,172.18.0.10:9093,172.18.0.9:9094,172.18.0.6:9095,172.18.0.8:9096,172.18.0.7:9097")
     @SetEnvironmentVariable(key = "KAFKA_SECURITY_PROTOCOL", value = "SSL")
     @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_LOCATION", value = "/home/greg/work/kafka-heartbeat/secrets/kafka_truststore.jks")
     @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_PASSWORD", value = "confluent")
@@ -25,23 +26,14 @@ public class ProtoTest {
     @SetEnvironmentVariable(key = "KAFKA_SSL_KEY_PASSWORD", value = "confluent")
     @SetEnvironmentVariable(key = "KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM", value = " ")
     @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":10,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
-    @SetEnvironmentVariable(key = "REBALANCE_DOWN", value = "TRUE")
-    @SetEnvironmentVariable(key = "REBALANCE_UP", value = "FALSE")
     public void test2() throws Exception {
-        HashSet<TopicPartition> topicSet = new HashSet();
-        topicSet.add(new TopicPartition("greg-test1", 0));
-        topicSet.add(new TopicPartition("greg-test1", 1));
-        topicSet.add(new TopicPartition("greg-test1", 2));
-        topicSet.add(new TopicPartition("greg-test1", 3));
-        topicSet.add(new TopicPartition("greg-test1", 4));
-        //getAdminClient().electLeaders(ElectionType.PREFERRED, topicSet).all();
-        //partitionReassignment("greg-test1", Arrays.asList(5,2,3,4));
+        //final HeartBeatConfig config = HeartBeatConfig.getConfig();
 
-        String topicName="greg-test1";
-        Integer partition=4;;
+        System.out.println(getAvailableBrokers());
 
-        System.out.println(CollectionUtils.containsAll(Arrays.asList(2,1,4,3), Arrays.asList(1, 2, 3,4,5)));
-
+        //final HeartBeatService heartBeatService = new HeartBeatService(config);
+        //final TopicData topicData = heartBeatService.getTopicData("greg-test1");
+        //System.out.println(topicData);
     }
 
     private List<Integer> getReplicas(Integer leader, Integer partition, boolean extend) {
@@ -62,7 +54,7 @@ public class ProtoTest {
 
     private List<Integer> getAvailableBrokers() throws Exception {
         final AdminClient adminClient = getAdminClient();
-        final List<Integer> brokers = getAdminClient().describeCluster().nodes().get().stream().map(n -> n.id()).sorted().collect(Collectors.toList());
+        final List<Integer> brokers = getAdminClient().describeCluster().nodes().get().stream().map(Node::id).sorted().collect(Collectors.toList());
         adminClient.close();
         return brokers;
     }
@@ -93,19 +85,19 @@ public class ProtoTest {
 
     private List<Integer> getPartitions(String topicName) throws Exception {
         final AdminClient adminClient = getAdminClient();
-        final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
-        return topicDescription.partitions().stream().map(p -> p.partition()).sorted().collect(Collectors.toList());
+        final TopicDescription topicDescription = adminClient.describeTopics(Collections.singletonList(topicName)).topicNameValues().get(topicName).get();
+        return topicDescription.partitions().stream().map(TopicPartitionInfo::partition).sorted().collect(Collectors.toList());
     }
 
     private List<Integer> getReplicas(String topicName, Integer partition) throws Exception {
         final AdminClient adminClient = getAdminClient();
-        final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
-        return topicDescription.partitions().get(partition).replicas().stream().map(r -> r.id()).sorted().collect(Collectors.toList());
+        final TopicDescription topicDescription = adminClient.describeTopics(Collections.singletonList(topicName)).topicNameValues().get(topicName).get();
+        return topicDescription.partitions().get(partition).replicas().stream().map(Node::id).sorted().collect(Collectors.toList());
     }
 
     private Integer getLeader(String topicName, Integer partition) throws Exception {
         final AdminClient adminClient = getAdminClient();
-        final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
+        final TopicDescription topicDescription = adminClient.describeTopics(Collections.singletonList(topicName)).topicNameValues().get(topicName).get();
         return topicDescription.partitions().get(partition).leader().id();
     }
 
@@ -132,7 +124,7 @@ public class ProtoTest {
         final ConfigEntry configEntry = new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, minIsr + "");
         final AlterConfigOp alterConfigOp = new AlterConfigOp(configEntry, AlterConfigOp.OpType.SET);
         final Map<ConfigResource, Collection<AlterConfigOp>> configs = new HashMap<>(1);
-        configs.put(configResource, Arrays.asList(alterConfigOp));
+        configs.put(configResource, Collections.singletonList(alterConfigOp));
         adminClient.incrementalAlterConfigs(configs).all().get();
         adminClient.close();
     }

@@ -27,7 +27,7 @@ class HeartBeatCronTest {
     @SetEnvironmentVariable(key = "KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM", value = " ")
     @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":10,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"kafkaProperties\":null,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
     public void config() {
-        assertNotNull(heartBeatCron.getHeartBeatConfig());
+        assertNotNull(heartBeatCron.getConfig());
     }
 
     @Test
@@ -42,7 +42,7 @@ class HeartBeatCronTest {
     @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":1,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"kafkaProperties\":null,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
     public void isDown() throws Exception {
         assertEquals(2, heartBeatCron.getHeartBeatService().getMinIsr("greg-test1"));
-        heartBeatCron.getHeartBeatConfig().setNumberOfBrokers(4);
+        heartBeatCron.getConfig().setNumberOfBrokers(4);
         heartBeatCron.cron();
         Thread.sleep(3000);
         assertTrue(heartBeatCron.getFailCount() > 0);
@@ -85,7 +85,7 @@ class HeartBeatCronTest {
         assertEquals(2, heartBeatCron.getHeartBeatService().getMinIsr("greg-test1"));
         heartBeatCron.cron();
         Thread.sleep(2000);
-        heartBeatCron.getHeartBeatConfig().setNumberOfBrokers(4);
+        heartBeatCron.getConfig().setNumberOfBrokers(4);
         Thread.sleep(3000);
         assertEquals(0, heartBeatCron.getPassCount());
         assertEquals(3, heartBeatCron.getFailCount());

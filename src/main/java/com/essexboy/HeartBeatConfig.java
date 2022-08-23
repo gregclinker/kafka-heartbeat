@@ -28,11 +28,8 @@ public class HeartBeatConfig {
     private int countToSwitch;
     private Properties kafkaProperties;
     private List<String> topics;
-    private boolean rebalanceUp = false;
     private int rebalanceUpDelay = 1;
-    private boolean rebalanceDown = false;
     private int rebalanceDownDelay = 1;
-    private boolean fastMinIsr = false;
 
     public static HeartBeatConfig getConfig() throws JsonProcessingException {
         if (System.getenv("HEART_BEAT_CONFIG") == null) {
@@ -45,15 +42,6 @@ public class HeartBeatConfig {
             properties.put(kafkaProperty, System.getenv(key));
         });
         heartBeatConfig.setKafkaProperties(properties);
-        if (System.getenv("REBALANCE_DOWN") != null) {
-            heartBeatConfig.setRebalanceDown(Boolean.parseBoolean(System.getenv("REBALANCE_DOWN").toLowerCase()));
-        }
-        if (System.getenv("REBALANCE_UP") != null) {
-            heartBeatConfig.setRebalanceUp(Boolean.parseBoolean(System.getenv("REBALANCE_UP").toLowerCase()));
-        }
-        if (System.getenv("FAST_MIN_ISR") != null) {
-            heartBeatConfig.setFastMinIsr(Boolean.parseBoolean(System.getenv("FAST_MIN_ISR").toLowerCase()));
-        }
         LOGGER.debug("created config {}", heartBeatConfig);
         return heartBeatConfig;
     }
