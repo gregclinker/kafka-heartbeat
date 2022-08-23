@@ -9,6 +9,6 @@ export KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM=" "
 export FAST_MIN_ISR="TRUE"
 export REBALANCE_UP="TRUE"
 export REBALANCE_DOWN="TRUE"
-export HEART_BEAT_CONFIG="{\"numberOfBrokers\":4,\"interval\":10,\"standardIsr\":3,\"reducedIsr\":2,\"rebalanceDownDelay\":20,\"rebalanceUpDelay\":10,\"countToSwitch\":3,\"topics\":[\"greg-test1\",\"greg-test2\"]}"
+export HEART_BEAT_CONFIG="{\"numberOfBrokers\":4,\"interval\":10,\"standardIsr\":3,\"replicationFactor\":4,\"reducedIsr\":2,\"rebalanceDownDelay\":2,\"rebalanceUpDelay\":20,\"countToSwitch\":3,\"topics\":[\"greg-test1\",\"greg-test2\"]}"
 
 java -jar target/kafka-heartbeat-0.1.jar

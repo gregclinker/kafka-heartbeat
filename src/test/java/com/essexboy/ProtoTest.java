@@ -2,12 +2,12 @@ package com.essexboy;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.kafka.clients.admin.*;
-import org.apache.kafka.common.ElectionType;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
 import org.junit.jupiter.api.Test;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
+import org.junitpioneer.jupiter.StdOut;
 
 import java.io.IOException;
 import java.util.*;
@@ -37,18 +37,22 @@ public class ProtoTest {
         //getAdminClient().electLeaders(ElectionType.PREFERRED, topicSet).all();
         //partitionReassignment("greg-test1", Arrays.asList(5,2,3,4));
 
-        isPartitionReassignment("greg-test1", 0);
+        String topicName="greg-test1";
+        Integer partition=4;;
+
+        System.out.println(CollectionUtils.containsAll(Arrays.asList(2,1,4,3), Arrays.asList(1, 2, 3,4,5)));
+
     }
 
     private List<Integer> getReplicas(Integer leader, Integer partition, boolean extend) {
         List<Integer> brokers = new ArrayList<>();
         if (leader <= 3) {
-            CollectionUtils.addAll(brokers, Arrays.asList(1,2,3));
+            CollectionUtils.addAll(brokers, Arrays.asList(1, 2, 3));
             if (extend) {
                 brokers.add(4 + (partition % 3));
             }
         } else {
-            CollectionUtils.addAll(brokers, Arrays.asList(4,5,6));
+            CollectionUtils.addAll(brokers, Arrays.asList(4, 5, 6));
             if (extend) {
                 brokers.add(1 + (partition % 3));
             }

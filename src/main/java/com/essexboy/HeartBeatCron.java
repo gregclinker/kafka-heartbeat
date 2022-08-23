@@ -49,7 +49,8 @@ public class HeartBeatCron extends TimerTask {
         try {
             final List<Integer> availableBrokers = heartBeatService.getAvailableBrokers();
             final boolean up = availableBrokers.size() >= heartBeatConfig.getNumberOfBrokers();
-            LOGGER.debug("run, isUp {}, available brokers {}", up, availableBrokers);
+            final String health = up ? "good" : "sick";
+            LOGGER.info("heartbeat {}, available brokers {}", health, availableBrokers);
             if (up) {
                 passCount++;
                 failCount = 0;
@@ -57,16 +58,10 @@ public class HeartBeatCron extends TimerTask {
                 failCount++;
                 passCount = 0;
             }
-            if (failCount == heartBeatConfig.getCountToSwitch()) {
-                heartBeatService.switchIsrDown();
-                if (heartBeatConfig.isRebalanceDown()) {
-                    heartBeatService.rebalanceDown();
-                }
-            } else if (passCount == heartBeatConfig.getCountToSwitch()) {
-                heartBeatService.switchIsrBack();
-                if (heartBeatConfig.isRebalanceUp()) {
-                    heartBeatService.rebalanceUp();
-                }
+            if (failCount == heartBeatConfig.getCountToSwitch() || (failCount > 0 && failCount % heartBeatConfig.getCountToSwitch() == 0 && !heartBeatService.isSucessfulSwitch())) {
+                heartBeatService.switchDown();
+            } else if ((passCount > 0 && passCount == heartBeatConfig.getCountToSwitch()) || (passCount > 0 && passCount % heartBeatConfig.getCountToSwitch() == 0 && !heartBeatService.isSucessfulSwitch())) {
+                heartBeatService.switchBack();
             }
         } catch (Exception e) {
             LOGGER.error("cron error, stopping heartbeat", e);

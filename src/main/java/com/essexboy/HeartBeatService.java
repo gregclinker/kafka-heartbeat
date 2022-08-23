@@ -22,6 +22,7 @@ public class HeartBeatService {
     final static Logger LOGGER = LoggerFactory.getLogger(HeartBeatService.class);
 
     private final HeartBeatConfig heartBeatConfig;
+    private boolean sucessfulSwitch = true;
 
 
     public HeartBeatService(HeartBeatConfig heartBeatConfig) {
@@ -36,60 +37,119 @@ public class HeartBeatService {
         return AdminClient.create(kafkaProperties);
     }
 
-    public void switchIsrDown() {
+    public void switchDown() {
         LOGGER.info("swicthIsrDown");
         if (heartBeatConfig.isFastMinIsr()) {
-            switchIsr(1);
+            switchDown(1);
         } else {
-            switchIsr(heartBeatConfig.getReducedIsr());
+            switchDown(heartBeatConfig.getReducedIsr());
         }
+        rebalanceDown();
     }
 
-    public void switchIsrBack() {
+    public void switchBack() {
         LOGGER.info("switchIsrBack");
+        rebalanceUp();
         switchIsr(heartBeatConfig.getStandardIsr());
     }
 
-    public boolean rebalanceDown() {
+    public void rebalanceDown() {
+        sucessfulSwitch = true;
         for (String topic : heartBeatConfig.getTopics()) {
-            LOGGER.info("rebalancing, topic {} to available replicas", topic);
+            LOGGER.info("rebalancing down, topic {} down to available replicas", topic);
             try {
-                partitionReassignment(topic, false);
+                for (Integer partition : getPartitions(topic)) {
+                    final int isrCount = getIsr(topic, partition).size();
+                    if (isrCount >= heartBeatConfig.getReducedIsr()) {
+                        LOGGER.info("SKIPPING rebalancing down, topic {}, partition {} already has {} ISRs", topic, partition, isrCount);
+                    } else {
+                        final Integer leader = getLeader(topic, partition);
+                        if (leader != null) {
+                            try {
+                                final List<Integer> replicas = getRebalanceReplicas(leader, partition, false);
+                                partitionReassignment(topic, partition, replicas);
+                                Thread.sleep(heartBeatConfig.getRebalanceDownDelay() * 1000);
+                            } catch (Exception e) {
+                                sucessfulSwitch = false;
+                                LOGGER.error("ERROR rebalancing down topic {}, partition {}", topic, partition, e);
+                            }
+                        }
+                    }
+                }
+                if (sucessfulSwitch && heartBeatConfig.isFastMinIsr()) {
+                    switchIsr(heartBeatConfig.getReducedIsr());
+                }
             } catch (Exception e) {
-                LOGGER.error("error rebalancing topic {}", topic, e);
+                sucessfulSwitch = false;
+                LOGGER.error("ERROR rebalancing down topic {}", topic, e);
             }
         }
-        if (heartBeatConfig.isFastMinIsr()) {
-            switchIsr(heartBeatConfig.getReducedIsr());
-        }
-        return false;
     }
 
-    public boolean rebalanceUp() {
+    public void rebalanceUp() {
+        sucessfulSwitch = true;
         for (String topic : heartBeatConfig.getTopics()) {
-            LOGGER.info("rebalancing, topic {} to available replicas", topic);
+            LOGGER.info("rebalancing up, topic {} to available replicas", topic);
             try {
-                partitionReassignment(topic, true);
+                for (Integer partition : getPartitions(topic)) {
+                    final Integer leader = getLeader(topic, partition);
+                    if (leader != null) {
+                        final int isrCount = getIsr(topic, partition).size();
+                        if (isrCount >= heartBeatConfig.getReplicationFactor()) {
+                            LOGGER.info("SKIPPING rebalancing up, topic {}, partition {} already has {} ISRs", topic, partition, isrCount);
+                        } else {
+                            try {
+                                final List<Integer> replicas = getRebalanceReplicas(leader, partition, true);
+                                partitionReassignment(topic, partition, replicas);
+                                Thread.sleep(heartBeatConfig.getRebalanceUpDelay() * 1000);
+                            } catch (Exception e) {
+                                sucessfulSwitch = false;
+                                LOGGER.error("ERROR rebalancing up topic {}, partition {}", topic, partition, e);
+                            }
+                        }
+                    }
+                }
             } catch (Exception e) {
-                LOGGER.error("error rebalancing topic {}", topic, e);
+                sucessfulSwitch = false;
+                LOGGER.error("ERROR rebalancing up topic {}", topic, e);
             }
         }
-        return false;
+    }
+
+    private void switchDown(int newIsr) {
+        sucessfulSwitch = true;
+        for (String topic : heartBeatConfig.getTopics()) {
+            LOGGER.info("switchIsr, topic {} to {}", topic, newIsr);
+            try {
+                for (Integer partition : getPartitions(topic)) {
+                    final int isrCount = getIsr(topic, partition).size();
+                    if (newIsr < isrCount) {
+                        LOGGER.info("switching minISR down to {}, for topic {}", newIsr, topic);
+                        switchIsr(topic, newIsr);
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                sucessfulSwitch = false;
+                LOGGER.error("ERROR in switchIsr to {}, for topic {}", newIsr, topic, e);
+            }
+        }
     }
 
     private void switchIsr(int newIsr) {
+        sucessfulSwitch = true;
         for (String topic : heartBeatConfig.getTopics()) {
             LOGGER.info("switchIsr, topic {} to {}", topic, newIsr);
             try {
                 switchIsr(topic, newIsr);
             } catch (Exception e) {
-                LOGGER.error("error in switchIsr to {}, for topic {}", newIsr, topic, e);
+                sucessfulSwitch = false;
+                LOGGER.error("ERROR in switchIsr to {}, for topic {}", newIsr, topic, e);
             }
         }
     }
 
     private void switchIsr(String topic, int newIsr) throws Exception {
-        LOGGER.info("switching topic {} to {}", topic, newIsr);
         if (getMinIsr(topic) != newIsr) {
             setMinIsr(topic, newIsr);
         } else {
@@ -128,7 +188,7 @@ public class HeartBeatService {
             final Object[] keys = configResourceConfigMap.keySet().toArray();
             for (ConfigEntry configEntry : configResourceConfigMap.get(keys[0]).entries()) {
                 if (configEntry.name().equals(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG)) {
-                    LOGGER.info("getMinIsr returned {}, for topic {}", configEntry.value(), topic);
+                    LOGGER.debug("getMinIsr returned {}, for topic {}", configEntry.value(), topic);
                     return Integer.parseInt(configEntry.value());
                 }
             }
@@ -161,8 +221,9 @@ public class HeartBeatService {
         return brokers;
     }
 
-    private void partitionReassignment(String topicName, Integer partition, List<Integer> replicas) throws Exception {
-        if (getReplicas(topicName, partition).equals(replicas)) {
+    private void partitionReassignment(String topicName, Integer partition, List<Integer> replicas) throws
+            Exception {
+        if (CollectionUtils.containsAll(getReplicas(topicName, partition), replicas)) {
             LOGGER.info("replicas already set to {} for topic {}, partition {}", replicas, topicName, partition);
             return;
         }
@@ -176,21 +237,6 @@ public class HeartBeatService {
             adminClient.close();
         }
 
-    }
-
-    private void partitionReassignment(String topicName, boolean extend) throws Exception {
-        for (Integer partition : getPartitions(topicName)) {
-            final Integer leader = getLeader(topicName, partition);
-            if (leader != null) {
-                final List<Integer> replicas = getRebalanceReplicas(leader, partition, extend);
-                partitionReassignment(topicName, partition, replicas);
-                if (extend) {
-                    Thread.sleep(heartBeatConfig.getRebalanceUpDelay() * 1000);
-                } else {
-                    Thread.sleep(heartBeatConfig.getRebalanceDownDelay() * 1000);
-                }
-            }
-        }
     }
 
     private List<Integer> getPartitions(String topicName) throws Exception {
@@ -208,6 +254,16 @@ public class HeartBeatService {
         try {
             final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
             return topicDescription.partitions().get(partition).replicas().stream().map(r -> r.id()).sorted().collect(Collectors.toList());
+        } finally {
+            adminClient.close();
+        }
+    }
+
+    private List<Integer> getIsr(String topicName, Integer partition) throws Exception {
+        final AdminClient adminClient = getAdminClient();
+        try {
+            final TopicDescription topicDescription = adminClient.describeTopics(Arrays.asList(topicName)).topicNameValues().get(topicName).get();
+            return topicDescription.partitions().get(partition).isr().stream().map(r -> r.id()).sorted().collect(Collectors.toList());
         } finally {
             adminClient.close();
         }

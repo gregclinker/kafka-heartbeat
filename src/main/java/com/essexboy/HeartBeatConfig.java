@@ -23,6 +23,7 @@ public class HeartBeatConfig {
     private int numberOfBrokers;
     private int interval;
     private int standardIsr;
+    private int replicationFactor = 4;
     private int reducedIsr;
     private int countToSwitch;
     private Properties kafkaProperties;
