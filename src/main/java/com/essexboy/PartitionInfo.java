@@ -12,13 +12,13 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 @ToString
-public class PartitionData {
+public class PartitionInfo {
     private Integer id;
     private Integer leader;
     private List<Integer> isrs;
     private List<Integer> replicas;
 
-    public PartitionData(TopicPartitionInfo topicPartitionInfo) {
+    public PartitionInfo(TopicPartitionInfo topicPartitionInfo) {
         this.id = topicPartitionInfo.partition();
         if (topicPartitionInfo.leader() != null) {
             this.leader = topicPartitionInfo.leader().id();

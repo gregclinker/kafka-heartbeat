@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 public class ProtoTest {
 
     @Test
-    @SetEnvironmentVariable(key = "KAFKA_BOOTSTRAP_SERVERS", value = "172.18.0.5:9092,172.18.0.10:9093,172.18.0.9:9094,172.18.0.6:9095,172.18.0.8:9096,172.18.0.7:9097")
+    @SetEnvironmentVariable(key = "KAFKA_BOOTSTRAP_SERVERS", value = "172.19.0.6:9092,172.19.0.9:9093,172.19.0.10:9094,172.19.0.7:9095,172.19.0.5:9096,172.19.0.8:9097")
     @SetEnvironmentVariable(key = "KAFKA_SECURITY_PROTOCOL", value = "SSL")
     @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_LOCATION", value = "/home/greg/work/kafka-heartbeat/secrets/kafka_truststore.jks")
     @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_PASSWORD", value = "confluent")
@@ -32,7 +32,7 @@ public class ProtoTest {
         System.out.println(getAvailableBrokers());
 
         //final HeartBeatService heartBeatService = new HeartBeatService(config);
-        //final TopicData topicData = heartBeatService.getTopicData("greg-test1");
+        //final TopicInfo topicData = heartBeatService.getTopicData("greg-test1");
         //System.out.println(topicData);
     }
 

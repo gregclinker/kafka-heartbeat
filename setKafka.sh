@@ -1,9 +1,9 @@
-export KAFKA1=172.19.0.5
+export KAFKA1=172.19.0.6
 export KAFKA2=172.19.0.10
-export KAFKA3=172.19.0.8
-export KAFKA4=172.19.0.9
-export KAFKA5=172.19.0.6
-export KAFKA6=172.19.0.7
-export ZOO1=172.19.0.4
-export ZOO2=172.19.0.3
-export ZOO3=172.19.0.2
+export KAFKA3=172.19.0.5
+export KAFKA4=172.19.0.7
+export KAFKA5=172.19.0.8
+export KAFKA6=172.19.0.9
+export ZOO1=172.19.0.3
+export ZOO2=172.19.0.2
+export ZOO3=172.19.0.4

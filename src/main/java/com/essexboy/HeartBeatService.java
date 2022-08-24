@@ -40,7 +40,7 @@ public class HeartBeatService {
         sucessfulSwitch = true;
         LOGGER.info("switchIsrDown");
         LOGGER.info("switching minISR to 1");
-        switchIsr(1);
+        switchIsrToOne();
         LOGGER.info("rebalancing down to min {} replicas", config.getReducedIsr());
         rebalance(config.getReducedIsr(), false, config.getRebalanceDownDelay(), config.getReducedIsr());
         LOGGER.info("switchIsrDown finished, success={}", sucessfulSwitch);
@@ -57,15 +57,24 @@ public class HeartBeatService {
     public void rebalance(int requiredReplicas, boolean extend, int delay, int newMinIsr) {
         for (String topic : config.getTopics()) {
             if (rebalance(topic, requiredReplicas, extend, delay)) {
-                switchIsr(topic, newMinIsr);
+                if (newMinIsr > getTopicData(topic).getPartitionMinIsr()) {
+                    LOGGER.info("SKIPPING switchIsr topic {} to minIsr={}, not enough ISRs", topic, newMinIsr);
+                } else {
+                    switchIsr(topic, newMinIsr);
+                }
             }
         }
     }
 
     private boolean rebalance(String topic, int requiredReplicas, boolean extend, int delay) {
-        final TopicData topicData = getTopicData(topic);
+        final TopicInfo topicInfo = getTopicData(topic);
         boolean successfulRebalance = true;
-        for (PartitionData partition : topicData.getPartitions()) {
+        final int partitionMinIsr = getTopicData(topic).getPartitionMinIsr();
+        if (partitionMinIsr >= requiredReplicas) {
+            LOGGER.info("SKIPPING rebalance topic {}, no ISRs less than {}", topic, requiredReplicas);
+            return true;
+        }
+        for (PartitionInfo partition : topicInfo.getPartitions()) {
             final int isrCount = partition.getIsrs().size();
             if (isrCount >= requiredReplicas) {
                 LOGGER.info("SKIPPING rebalancing topic {}, partition {} already has {} ISRs", topic, partition.getId(), isrCount);
@@ -86,19 +95,24 @@ public class HeartBeatService {
         return successfulRebalance;
     }
 
-    private void switchIsr(int newIsr) {
+    private void switchIsrToOne() {
         for (String topic : config.getTopics()) {
-            switchIsr(topic, newIsr);
+            final int partitionMinIsr = getTopicData(topic).getPartitionMinIsr();
+            if (partitionMinIsr <= 1) {
+                switchIsr(topic, 1);
+            } else {
+                LOGGER.info("SKIPPING switchIsrToOne topic {}, no ISRs less than {}", topic, partitionMinIsr);
+            }
         }
     }
 
     private void switchIsr(String topic, int newIsr) {
-        LOGGER.info("switchIsr, topic {} to {}", topic, newIsr);
         try {
             if (getMinIsr(topic) != newIsr) {
                 setMinIsr(topic, newIsr);
+                Thread.sleep(config.getSwitchMinIsrDelay() * 1000L);
             } else {
-                LOGGER.info("SKIPPING topic {} already has minIsr of {}", topic, newIsr);
+                LOGGER.info("SKIPPING switchIsr, topic {} already has minIsr of {}", topic, newIsr);
             }
         } catch (Exception e) {
             sucessfulSwitch = false;
@@ -173,16 +187,16 @@ public class HeartBeatService {
         }
     }
 
-    public TopicData getTopicData(String topicName) {
-        TopicData topicData = new TopicData();
-        topicData.setName(topicName);
+    public TopicInfo getTopicData(String topicName) {
+        TopicInfo topicInfo = new TopicInfo();
+        topicInfo.setName(topicName);
         try (AdminClient adminClient = getAdminClient()) {
             final TopicDescription topicDescription = adminClient.describeTopics(List.of(topicName)).topicNameValues().get(topicName).get();
-            topicData.setPartitions(topicDescription.partitions().stream().map(PartitionData::new).collect(Collectors.toList()));
+            topicInfo.setPartitions(topicDescription.partitions().stream().map(PartitionInfo::new).collect(Collectors.toList()));
         } catch (Exception e) {
             LOGGER.error("ERROR getTopicData, topic {}", topicName, e);
         }
-        return topicData;
+        return topicInfo;
     }
 
     private List<Integer> orderLeaderFirst(List<Integer> replicas, Integer leader) {

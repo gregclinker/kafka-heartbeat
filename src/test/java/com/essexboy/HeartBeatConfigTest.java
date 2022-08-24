@@ -19,7 +19,7 @@ class HeartBeatConfigTest {
     @SetEnvironmentVariable(key = "KAFKA_SSL_KEYSTORE_PASSWORD", value = "confluent")
     @SetEnvironmentVariable(key = "KAFKA_SSL_KEY_PASSWORD", value = "confluent")
     @SetEnvironmentVariable(key = "KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM", value = " ")
-    @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":10,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
+    @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":10,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"rebalanceUpDelay\":10,\"rebalanceDownDelay\":20,\"switchMinIsrDelay\":30,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
     public void formProperties() throws IOException {
         final HeartBeatConfig config = HeartBeatConfig.getConfig();
         assertNotNull(config);
@@ -27,6 +27,9 @@ class HeartBeatConfigTest {
         assertEquals(10, config.getInterval());
         assertEquals(2, config.getStandardIsr());
         assertEquals(1, config.getReducedIsr());
+        assertEquals(10, config.getRebalanceUpDelay());
+        assertEquals(20, config.getRebalanceDownDelay());
+        assertEquals(30, config.getSwitchMinIsrDelay());
         assertEquals(2, config.getTopics().size());
         assertEquals("greg-test1", config.getTopics().get(0));
         assertEquals("greg-test2", config.getTopics().get(1));

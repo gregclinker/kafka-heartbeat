@@ -30,6 +30,7 @@ public class HeartBeatConfig {
     private List<String> topics;
     private int rebalanceUpDelay = 1;
     private int rebalanceDownDelay = 1;
+    private int switchMinIsrDelay = 1;
 
     public static HeartBeatConfig getConfig() throws JsonProcessingException {
         if (System.getenv("HEART_BEAT_CONFIG") == null) {
