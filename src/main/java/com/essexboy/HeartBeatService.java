@@ -9,6 +9,7 @@ import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
+import org.joda.time.Interval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +24,7 @@ public class HeartBeatService {
 
     private final HeartBeatConfig config;
     private boolean sucessfulSwitch = true;
+    private ProcessedStats processedStats = new ProcessedStats();
 
     public HeartBeatService(HeartBeatConfig config) {
         this.config = config;
@@ -38,26 +40,33 @@ public class HeartBeatService {
 
     public void switchDown() {
         sucessfulSwitch = true;
-        LOGGER.info("switchIsrDown");
-        LOGGER.info("switching minISR to 1");
+        processedStats.reset();
+        LOGGER.info("started switchDown");
+        LOGGER.info("started switching minISR to 1");
         switchIsrToOne();
-        LOGGER.info("rebalancing down to min {} replicas", config.getReducedIsr());
+        LOGGER.info("finished switchIsrToOne, success={}, stats={}", sucessfulSwitch, processedStats);
+        processedStats.reset();
+        LOGGER.info("started rebalancing down to min {} replicas", config.getReducedIsr());
         rebalance(config.getReducedIsr(), false, config.getRebalanceDownDelay(), config.getReducedIsr());
-        LOGGER.info("switchIsrDown finished, success={}", sucessfulSwitch);
+        LOGGER.info("finished switchDown, success={}, stats={}", sucessfulSwitch, processedStats);
     }
 
     public void switchBack() {
         sucessfulSwitch = true;
-        LOGGER.info("switchIsrBack");
-        LOGGER.info("rebalancing up to min {} replicas", config.getReplicationFactor());
+        processedStats.reset();
+        LOGGER.info("started switchBack");
+        LOGGER.info("started rebalancing up to min {} replicas", config.getReplicationFactor());
         rebalance(config.getReplicationFactor(), true, config.getRebalanceUpDelay(), config.getStandardIsr());
-        LOGGER.info("switchIsrBack finished, success={}", sucessfulSwitch);
+        LOGGER.info("finished switchBack, success={}, stats={}", sucessfulSwitch, processedStats);
     }
 
     public void rebalance(int requiredReplicas, boolean extend, int delay, int newMinIsr) {
         for (String topic : config.getTopics()) {
+            processedStats.topicsRebalanceProcessed++;
+            processedStats.topicsMinIsrProcessed++;
             if (rebalance(topic, requiredReplicas, extend, delay)) {
                 if (newMinIsr > getTopicData(topic).getPartitionMinIsr()) {
+                    processedStats.topicsMinIsrSkipped++;
                     LOGGER.info("SKIPPING switchIsr topic {} to minIsr={}, not enough ISRs", topic, newMinIsr);
                 } else {
                     switchIsr(topic, newMinIsr);
@@ -71,14 +80,18 @@ public class HeartBeatService {
         boolean successfulRebalance = true;
         final int partitionMinIsr = getTopicData(topic).getPartitionMinIsr();
         if (partitionMinIsr >= requiredReplicas) {
+            processedStats.topicsRebalanceSkipped++;
             LOGGER.info("SKIPPING rebalance topic {}, no ISRs less than {}", topic, requiredReplicas);
             return true;
         }
         for (PartitionInfo partition : topicInfo.getPartitions()) {
+            processedStats.partitionsRebalanceProcessed++;
             final int isrCount = partition.getIsrs().size();
             if (isrCount >= requiredReplicas) {
+                processedStats.partitionsRebalanceSkipped++;
                 LOGGER.info("SKIPPING rebalancing topic {}, partition {} already has {} ISRs", topic, partition.getId(), isrCount);
             } else if (partition.getLeader() == null) {
+                processedStats.partitionsRebalanceSkipped++;
                 LOGGER.info("SKIPPING rebalancing topic {}, partition {}, no leader set", topic, partition.getId(), isrCount);
             } else {
                 try {
@@ -88,6 +101,7 @@ public class HeartBeatService {
                 } catch (Exception e) {
                     sucessfulSwitch = false;
                     successfulRebalance = false;
+                    processedStats.errors++;
                     LOGGER.error("ERROR rebalancing topic {}, partition {}", topic, partition.getId(), e);
                 }
             }
@@ -97,10 +111,12 @@ public class HeartBeatService {
 
     private void switchIsrToOne() {
         for (String topic : config.getTopics()) {
+            processedStats.topicsMinIsrProcessed++;
             final int partitionMinIsr = getTopicData(topic).getPartitionMinIsr();
             if (partitionMinIsr <= 1) {
                 switchIsr(topic, 1);
             } else {
+                processedStats.topicsMinIsrSkipped++;
                 LOGGER.info("SKIPPING switchIsrToOne topic {}, no ISRs less than {}", topic, partitionMinIsr);
             }
         }
@@ -112,10 +128,12 @@ public class HeartBeatService {
                 setMinIsr(topic, newIsr);
                 Thread.sleep(config.getSwitchMinIsrDelay() * 1000L);
             } else {
+                processedStats.topicsMinIsrSkipped++;
                 LOGGER.info("SKIPPING switchIsr, topic {} already has minIsr of {}", topic, newIsr);
             }
         } catch (Exception e) {
             sucessfulSwitch = false;
+            processedStats.errors++;
             LOGGER.error("ERROR in switchIsr to {}, for topic {}", newIsr, topic, e);
         }
     }
@@ -203,5 +221,48 @@ public class HeartBeatService {
         final List<Integer> newReplicas = replicas.stream().filter(i -> !i.equals(leader)).collect(Collectors.toList());
         newReplicas.add(0, leader);
         return newReplicas;
+    }
+
+    private class ProcessedStats {
+        protected int topicsMinIsrProcessed;
+        protected int topicsMinIsrSkipped;
+        protected int topicsRebalanceProcessed;
+        protected int topicsRebalanceSkipped;
+        protected int partitionsRebalanceProcessed;
+        protected int partitionsRebalanceSkipped;
+        protected int errors;
+        private long startTime;
+
+        public void reset() {
+            topicsMinIsrProcessed = 0;
+            topicsMinIsrSkipped = 0;
+            topicsRebalanceProcessed = 0;
+            topicsRebalanceSkipped = 0;
+            partitionsRebalanceProcessed = 0;
+            partitionsRebalanceSkipped = 0;
+            errors = 0;
+            startTime = System.currentTimeMillis();
+        }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("ProcessedStats{");
+            if (topicsMinIsrProcessed > 0) {
+                sb.append("topicsMinIsrProcessed=").append(topicsMinIsrProcessed);
+                sb.append(", topicsMinIsrSkipped=").append(topicsMinIsrSkipped);
+            }
+            if (topicsRebalanceProcessed > 0) {
+                sb.append(", topicsRebalanceProcessed=").append(topicsRebalanceProcessed);
+                sb.append(", topicsRebalanceSkipped=").append(topicsRebalanceSkipped);
+            }
+            if (partitionsRebalanceProcessed > 0) {
+                sb.append(", partitionsRebalanceProcessed=").append(partitionsRebalanceProcessed);
+                sb.append(", partitionsRebalanceSkipped=").append(partitionsRebalanceSkipped);
+            }
+            sb.append(", errors=").append(errors);
+            sb.append(", elapsedMinutes=").append(new Interval(startTime, System.currentTimeMillis()).toPeriod().getMinutes());
+            sb.append('}');
+            return sb.toString();
+        }
     }
 }

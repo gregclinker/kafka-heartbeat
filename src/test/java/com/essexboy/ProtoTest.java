@@ -7,6 +7,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.TopicPartitionInfo;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
+import org.joda.time.Interval;
 import org.junit.jupiter.api.Test;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
 
@@ -27,13 +28,6 @@ public class ProtoTest {
     @SetEnvironmentVariable(key = "KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM", value = " ")
     @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":10,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
     public void test2() throws Exception {
-        //final HeartBeatConfig config = HeartBeatConfig.getConfig();
-
-        System.out.println(getAvailableBrokers());
-
-        //final HeartBeatService heartBeatService = new HeartBeatService(config);
-        //final TopicInfo topicData = heartBeatService.getTopicData("greg-test1");
-        //System.out.println(topicData);
     }
 
     private List<Integer> getReplicas(Integer leader, Integer partition, boolean extend) {
