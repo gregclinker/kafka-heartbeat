@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 public class PartitionInfo {
     private Integer id;
     private Integer leader;
-    private List<Integer> isrs;
     private List<Integer> replicas;
+    private List<Integer> isrs;
 
     public PartitionInfo(TopicPartitionInfo topicPartitionInfo) {
         this.id = topicPartitionInfo.partition();

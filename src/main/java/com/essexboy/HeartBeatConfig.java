@@ -23,13 +23,10 @@ public class HeartBeatConfig {
     private int numberOfBrokers;
     private int interval;
     private int standardIsr;
-    private int replicationFactor = 4;
     private int reducedIsr;
     private int countToSwitch;
     private Properties kafkaProperties;
     private List<String> topics;
-    private int rebalanceUpDelay = 1;
-    private int rebalanceDownDelay = 1;
     private int switchMinIsrDelay = 1;
 
     public static HeartBeatConfig getConfig() throws JsonProcessingException {
