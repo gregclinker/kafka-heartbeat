@@ -38,7 +38,7 @@ public class HeartBeatConfig {
         }
         final HeartBeatConfig heartBeatConfig = new ObjectMapper().readValue(System.getenv("HEART_BEAT_CONFIG"), HeartBeatConfig.class);
         Properties properties = new Properties();
-        System.getenv().keySet().stream().filter(key -> key.toString().startsWith("KAFKA_")).forEach(key -> {
+        System.getenv().keySet().stream().filter(key -> key.startsWith("KAFKA_")).forEach(key -> {
             String kafkaProperty = key.replace("KAFKA_", "").replace("_", ".").toLowerCase();
             properties.put(kafkaProperty, System.getenv(key));
         });

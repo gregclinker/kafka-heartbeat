@@ -23,19 +23,11 @@ public class HeartBeatService {
     final static Logger LOGGER = LoggerFactory.getLogger(HeartBeatService.class);
 
     private final HeartBeatConfig config;
+    private final ProcessedStats processedStats = new ProcessedStats();
     private boolean sucessfulSwitch = true;
-    private ProcessedStats processedStats = new ProcessedStats();
 
     public HeartBeatService(HeartBeatConfig config) {
         this.config = config;
-    }
-
-    private AdminClient getAdminClient() {
-        final Properties kafkaProperties = config.getKafkaProperties();
-        if (kafkaProperties == null) {
-            LOGGER.error("kafkaProperties are null");
-        }
-        return AdminClient.create(kafkaProperties);
     }
 
     public void switchDown() {
@@ -92,7 +84,7 @@ public class HeartBeatService {
                 LOGGER.info("SKIPPING rebalancing topic {}, partition {} already has {} ISRs", topic, partition.getId(), isrCount);
             } else if (partition.getLeader() == null) {
                 processedStats.partitionsRebalanceSkipped++;
-                LOGGER.info("SKIPPING rebalancing topic {}, partition {}, no leader set", topic, partition.getId(), isrCount);
+                LOGGER.info("SKIPPING rebalancing topic {}, partition {}, no leader set", topic, partition.getId());
             } else {
                 try {
                     final List<Integer> replicas = getRebalanceReplicas(partition.getLeader(), partition.getId(), extend);
@@ -139,7 +131,7 @@ public class HeartBeatService {
     }
 
     public void setMinIsr(String topic, int minIsr) throws Exception {
-        try (AdminClient adminClient = getAdminClient()) {
+        try (AdminClient adminClient = AdminClient.create(config.getKafkaProperties())) {
             final ConfigResource configResource = new ConfigResource(ConfigResource.Type.TOPIC, topic);
             final ConfigEntry configEntry = new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, minIsr + "");
             final AlterConfigOp alterConfigOp = new AlterConfigOp(configEntry, AlterConfigOp.OpType.SET);
@@ -155,7 +147,7 @@ public class HeartBeatService {
     }
 
     public int getMinIsr(String topic) throws Exception {
-        try (AdminClient adminClient = getAdminClient()) {
+        try (AdminClient adminClient = AdminClient.create(config.getKafkaProperties())) {
             final Set<ConfigResource> resources = Collections.singleton(new ConfigResource(ConfigResource.Type.TOPIC, topic));
             final KafkaFuture<Map<ConfigResource, Config>> all = adminClient.describeConfigs(resources).all();
             while (!all.isDone()) {
@@ -190,14 +182,13 @@ public class HeartBeatService {
     }
 
     public List<Integer> getAvailableBrokers() throws Exception {
-        final AdminClient adminClient = getAdminClient();
-        final List<Integer> brokers = getAdminClient().describeCluster().nodes().get().stream().map(Node::id).sorted().collect(Collectors.toList());
-        adminClient.close();
-        return brokers;
+        try (AdminClient adminClient = AdminClient.create(config.getKafkaProperties())) {
+            return adminClient.describeCluster().nodes().get().stream().map(Node::id).sorted().collect(Collectors.toList());
+        }
     }
 
     private void partitionReassignment(String topicName, Integer partition, List<Integer> replicas) throws Exception {
-        try (AdminClient adminClient = getAdminClient()) {
+        try (AdminClient adminClient = AdminClient.create(config.getKafkaProperties())) {
             Map<TopicPartition, Optional<NewPartitionReassignment>> topicPartitionOptionalHashMap = new HashMap<>();
             topicPartitionOptionalHashMap.put(new TopicPartition(topicName, partition), Optional.of(new NewPartitionReassignment(replicas)));
             adminClient.alterPartitionReassignments(topicPartitionOptionalHashMap).all().get();
@@ -208,7 +199,7 @@ public class HeartBeatService {
     public TopicInfo getTopicData(String topicName) {
         TopicInfo topicInfo = new TopicInfo();
         topicInfo.setName(topicName);
-        try (AdminClient adminClient = getAdminClient()) {
+        try (AdminClient adminClient = AdminClient.create(config.getKafkaProperties())) {
             final TopicDescription topicDescription = adminClient.describeTopics(List.of(topicName)).topicNameValues().get(topicName).get();
             topicInfo.setPartitions(topicDescription.partitions().stream().map(PartitionInfo::new).collect(Collectors.toList()));
         } catch (Exception e) {
@@ -223,7 +214,7 @@ public class HeartBeatService {
         return newReplicas;
     }
 
-    private class ProcessedStats {
+    private static class ProcessedStats {
         protected int topicsMinIsrProcessed;
         protected int topicsMinIsrSkipped;
         protected int topicsRebalanceProcessed;

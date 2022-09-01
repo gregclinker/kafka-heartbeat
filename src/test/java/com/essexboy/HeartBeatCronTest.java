@@ -13,7 +13,7 @@ class HeartBeatCronTest {
     @BeforeEach
     private void init() throws Exception {
         heartBeatCron = new HeartBeatCron();
-        ((HeartBeatService) heartBeatCron.getHeartBeatService()).setMinIsr("greg-test1", 2);
+        heartBeatCron.getHeartBeatService().setMinIsr("greg-test1", 2);
     }
 
     @Test

@@ -21,7 +21,7 @@ public class HeartBeatCron extends TimerTask {
     private final HeartBeatService heartBeatService;
     private int failCount = 0;
     private int passCount;
-    private boolean switchedDown = false;
+    private final boolean switchedDown = false;
 
     public HeartBeatCron() throws IOException {
         this.config = HeartBeatConfig.getConfig();

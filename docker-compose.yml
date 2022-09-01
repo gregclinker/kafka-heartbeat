@@ -48,6 +48,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: ISSL
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2182,zoo3:2183"
       KAFKA_BROKER_ID: 1
+      KAFKA_BROKER_RACK: "RACK1"
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_SSL_KEYSTORE_FILENAME: kafka_keystore.jks
@@ -80,6 +81,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: ISSL
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2182,zoo3:2183"
       KAFKA_BROKER_ID: 2
+      KAFKA_BROKER_RACK: "RACK1"
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_SSL_KEYSTORE_FILENAME: kafka_keystore.jks
@@ -112,6 +114,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: ISSL
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2182,zoo3:2183"
       KAFKA_BROKER_ID: 3
+      KAFKA_BROKER_RACK: "RACK1"
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_SSL_KEYSTORE_FILENAME: kafka_keystore.jks
@@ -144,6 +147,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: ISSL
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2182,zoo3:2183"
       KAFKA_BROKER_ID: 4
+      KAFKA_BROKER_RACK: "RACK2"
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_SSL_KEYSTORE_FILENAME: kafka_keystore.jks
@@ -176,6 +180,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: ISSL
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2182,zoo3:2183"
       KAFKA_BROKER_ID: 5
+      KAFKA_BROKER_RACK: "RACK2"
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_SSL_KEYSTORE_FILENAME: kafka_keystore.jks
@@ -208,6 +213,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: ISSL
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2182,zoo3:2183"
       KAFKA_BROKER_ID: 6
+      KAFKA_BROKER_RACK: "RACK2"
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
       KAFKA_SSL_KEYSTORE_FILENAME: kafka_keystore.jks
