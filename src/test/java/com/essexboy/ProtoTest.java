@@ -7,7 +7,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.TopicPartitionInfo;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
-import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.junit.jupiter.api.Test;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
 
@@ -30,6 +29,8 @@ public class ProtoTest {
     @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":10,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
     public void test2() throws Exception {
         System.out.println(getAvailableBrokers().size());
+
+        int minIsr=3;
         List<String> topics = new ArrayList<>();
         for (int i = 1; i <= 10; i++) {
             topics.add("does-not-exist" + i);
@@ -37,17 +38,14 @@ public class ProtoTest {
         for (int i = 1; i <= 50; i++) {
             topics.add("greg-test" + i);
         }
-        try {
-            setMinIsr(topics, 3);
-        } catch (ExecutionException e) {
-            System.out.println(e.getCause().getClass().getName());
-            System.out.println(e.getCause().getClass().isInstance(UnknownTopicOrPartitionException.class));
-            if (e.getCause().getClass() == UnknownTopicOrPartitionException.class) {
-                // ignore
-            } else {
-                throw e;
-            }
-        }
+        topics = removeNonExistentTopics(topics);
+        setMinIsr(topics, minIsr);
+    }
+
+    private List<String> removeNonExistentTopics(List<String> topics) throws IOException, InterruptedException, ExecutionException {
+        AdminClient adminClient = getAdminClient();
+        final List<String> confirmedTopics = adminClient.listTopics().listings().get().stream().map(TopicListing::name).collect(Collectors.toList());
+        return topics.stream().filter(t -> (confirmedTopics.contains(t))).collect(Collectors.toList());
     }
 
     private List<Integer> getReplicas(Integer leader, Integer partition, boolean extend) {
