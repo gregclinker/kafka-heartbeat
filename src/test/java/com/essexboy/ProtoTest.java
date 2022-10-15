@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 public class ProtoTest {
 
     @Test
-    @SetEnvironmentVariable(key = "KAFKA_BOOTSTRAP_SERVERS", value = "172.19.0.6:9092,172.19.0.9:9093,172.19.0.10:9094,172.19.0.7:9095,172.19.0.5:9096,172.19.0.8:9097")
+    @SetEnvironmentVariable(key = "KAFKA_BOOTSTRAP_SERVERS", value = "172.19.0.8:29092,172.19.0.6:29093,172.19.0.5:29094,172.19.0.10:29095,172.19.0.7:29096,172.19.0.9:29097")
     @SetEnvironmentVariable(key = "KAFKA_SECURITY_PROTOCOL", value = "SSL")
     @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_LOCATION", value = "/home/greg/work/kafka-heartbeat/secrets/kafka_truststore.jks")
     @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_PASSWORD", value = "confluent")
@@ -27,6 +27,15 @@ public class ProtoTest {
     @SetEnvironmentVariable(key = "KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM", value = " ")
     @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":10,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
     public void test2() throws Exception {
+        System.out.println(getAvailableBrokers().size());
+        List<String> topics = new ArrayList<>();
+        for (int i = 1; i <= 10; i++) {
+            topics.add("does-not-exist" + i);
+        }
+        for (int i = 1; i <= 50; i++) {
+            topics.add("greg-test" + i);
+        }
+        setMinIsr(topics, 2);
     }
 
     private List<Integer> getReplicas(Integer leader, Integer partition, boolean extend) {
@@ -118,6 +127,19 @@ public class ProtoTest {
         final AlterConfigOp alterConfigOp = new AlterConfigOp(configEntry, AlterConfigOp.OpType.SET);
         final Map<ConfigResource, Collection<AlterConfigOp>> configs = new HashMap<>(1);
         configs.put(configResource, Collections.singletonList(alterConfigOp));
+        adminClient.incrementalAlterConfigs(configs).all().get();
+        adminClient.close();
+    }
+
+    private void setMinIsr(List<String> topics, int minIsr) throws Exception {
+        final AdminClient adminClient = getAdminClient();
+        final Map<ConfigResource, Collection<AlterConfigOp>> configs = new HashMap<>(1);
+        for (String topic : topics) {
+            final ConfigResource configResource = new ConfigResource(ConfigResource.Type.TOPIC, topic);
+            final ConfigEntry configEntry = new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, minIsr + "");
+            final AlterConfigOp alterConfigOp = new AlterConfigOp(configEntry, AlterConfigOp.OpType.SET);
+            configs.put(configResource, Collections.singletonList(alterConfigOp));
+        }
         adminClient.incrementalAlterConfigs(configs).all().get();
         adminClient.close();
     }
