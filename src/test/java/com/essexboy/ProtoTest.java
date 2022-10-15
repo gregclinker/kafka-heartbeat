@@ -7,11 +7,13 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.TopicPartitionInfo;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.TopicConfig;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.junit.jupiter.api.Test;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 public class ProtoTest {
@@ -35,7 +37,17 @@ public class ProtoTest {
         for (int i = 1; i <= 50; i++) {
             topics.add("greg-test" + i);
         }
-        setMinIsr(topics, 2);
+        try {
+            setMinIsr(topics, 3);
+        } catch (ExecutionException e) {
+            System.out.println(e.getCause().getClass().getName());
+            System.out.println(e.getCause().getClass().isInstance(UnknownTopicOrPartitionException.class));
+            if (e.getCause().getClass() == UnknownTopicOrPartitionException.class) {
+                // ignore
+            } else {
+                throw e;
+            }
+        }
     }
 
     private List<Integer> getReplicas(Integer leader, Integer partition, boolean extend) {
