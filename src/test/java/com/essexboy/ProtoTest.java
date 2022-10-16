@@ -28,9 +28,6 @@ public class ProtoTest {
     @SetEnvironmentVariable(key = "KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM", value = " ")
     @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":10,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
     public void test2() throws Exception {
-        System.out.println(getAvailableBrokers().size());
-
-        int minIsr=3;
         List<String> topics = new ArrayList<>();
         for (int i = 1; i <= 10; i++) {
             topics.add("does-not-exist" + i);
@@ -38,8 +35,36 @@ public class ProtoTest {
         for (int i = 1; i <= 50; i++) {
             topics.add("greg-test" + i);
         }
-        topics = removeNonExistentTopics(topics);
-        setMinIsr(topics, minIsr);
+
+        int minIsr = 2;
+        topics = getTopicsToSwitch(topics, minIsr);
+        if (topics.size() > 0) {
+            setMinIsr(topics, minIsr);
+        }
+    }
+
+    private List<String> getTopicsToSwitch(List<String> topics, int minIsr) throws IOException, InterruptedException, ExecutionException {
+        final AdminClient adminClient = getAdminClient();
+
+        // filter out non confirmed topics
+        final List<String> confirmedTopics = adminClient.listTopics().listings().get().stream().map(TopicListing::name).collect(Collectors.toList());
+        topics = topics.stream().filter(t -> (confirmedTopics.contains(t))).collect(Collectors.toList());
+
+        System.out.println("confirmed topics=" + topics);
+
+        // filter out topics that already have correct minISR
+        final Set<ConfigResource> resources = topics.stream().map(t -> new ConfigResource(ConfigResource.Type.TOPIC, t)).collect(Collectors.toSet());
+        final Map<ConfigResource, Config> configResourceConfigMap = adminClient.describeConfigs(resources).all().get();
+        final List<String> minISRAlreadySetTopics = configResourceConfigMap.entrySet().stream().filter(e -> (Integer.parseInt(e.getValue().get(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG).value()) == minIsr)).map(e -> e.getKey().name()).collect(Collectors.toList());
+        System.out.println("topics with minISR already set=" + minISRAlreadySetTopics);
+
+        topics = topics.stream().filter(t -> (!minISRAlreadySetTopics.contains(t))).collect(Collectors.toList());
+
+        System.out.println("topics to process=" + topics);
+
+        adminClient.close();
+
+        return topics;
     }
 
     private List<String> removeNonExistentTopics(List<String> topics) throws IOException, InterruptedException, ExecutionException {
