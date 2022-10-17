@@ -15,6 +15,8 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import static java.util.Collections.singletonList;
+
 public class ProtoTest {
 
     @Test
@@ -35,15 +37,10 @@ public class ProtoTest {
         for (int i = 1; i <= 50; i++) {
             topics.add("greg-test" + i);
         }
-
-        int minIsr = 2;
-        topics = getTopicsToSwitch(topics, minIsr);
-        if (topics.size() > 0) {
-            setMinIsr(topics, minIsr);
-        }
+        setMinIsr(topics, 2);
     }
 
-    private List<String> getTopicsToSwitch(List<String> topics, int minIsr) throws IOException, InterruptedException, ExecutionException {
+    private List<String> setMinIsr(List<String> topics, int minIsr) throws IOException, InterruptedException, ExecutionException {
         final AdminClient adminClient = getAdminClient();
 
         // filter out non confirmed topics
@@ -61,6 +58,16 @@ public class ProtoTest {
         topics = topics.stream().filter(t -> (!minISRAlreadySetTopics.contains(t))).collect(Collectors.toList());
 
         System.out.println("topics to process=" + topics);
+
+        if (topics.size() > 0) {
+            final Map<ConfigResource, Collection<AlterConfigOp>> configs = new HashMap<>(1);
+            for (String topic : topics) {
+                configs.put(new ConfigResource(ConfigResource.Type.TOPIC, topic), singletonList(new AlterConfigOp(new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, minIsr + ""), AlterConfigOp.OpType.SET)));
+            }
+            adminClient.incrementalAlterConfigs(configs).all().get();
+        } else {
+            System.out.println("no topics found to switch");
+        }
 
         adminClient.close();
 
@@ -122,19 +129,19 @@ public class ProtoTest {
 
     private List<Integer> getPartitions(String topicName) throws Exception {
         final AdminClient adminClient = getAdminClient();
-        final TopicDescription topicDescription = adminClient.describeTopics(Collections.singletonList(topicName)).topicNameValues().get(topicName).get();
+        final TopicDescription topicDescription = adminClient.describeTopics(singletonList(topicName)).topicNameValues().get(topicName).get();
         return topicDescription.partitions().stream().map(TopicPartitionInfo::partition).sorted().collect(Collectors.toList());
     }
 
     private List<Integer> getReplicas(String topicName, Integer partition) throws Exception {
         final AdminClient adminClient = getAdminClient();
-        final TopicDescription topicDescription = adminClient.describeTopics(Collections.singletonList(topicName)).topicNameValues().get(topicName).get();
+        final TopicDescription topicDescription = adminClient.describeTopics(singletonList(topicName)).topicNameValues().get(topicName).get();
         return topicDescription.partitions().get(partition).replicas().stream().map(Node::id).sorted().collect(Collectors.toList());
     }
 
     private Integer getLeader(String topicName, Integer partition) throws Exception {
         final AdminClient adminClient = getAdminClient();
-        final TopicDescription topicDescription = adminClient.describeTopics(Collections.singletonList(topicName)).topicNameValues().get(topicName).get();
+        final TopicDescription topicDescription = adminClient.describeTopics(singletonList(topicName)).topicNameValues().get(topicName).get();
         return topicDescription.partitions().get(partition).leader().id();
     }
 
@@ -161,20 +168,7 @@ public class ProtoTest {
         final ConfigEntry configEntry = new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, minIsr + "");
         final AlterConfigOp alterConfigOp = new AlterConfigOp(configEntry, AlterConfigOp.OpType.SET);
         final Map<ConfigResource, Collection<AlterConfigOp>> configs = new HashMap<>(1);
-        configs.put(configResource, Collections.singletonList(alterConfigOp));
-        adminClient.incrementalAlterConfigs(configs).all().get();
-        adminClient.close();
-    }
-
-    private void setMinIsr(List<String> topics, int minIsr) throws Exception {
-        final AdminClient adminClient = getAdminClient();
-        final Map<ConfigResource, Collection<AlterConfigOp>> configs = new HashMap<>(1);
-        for (String topic : topics) {
-            final ConfigResource configResource = new ConfigResource(ConfigResource.Type.TOPIC, topic);
-            final ConfigEntry configEntry = new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, minIsr + "");
-            final AlterConfigOp alterConfigOp = new AlterConfigOp(configEntry, AlterConfigOp.OpType.SET);
-            configs.put(configResource, Collections.singletonList(alterConfigOp));
-        }
+        configs.put(configResource, singletonList(alterConfigOp));
         adminClient.incrementalAlterConfigs(configs).all().get();
         adminClient.close();
     }
