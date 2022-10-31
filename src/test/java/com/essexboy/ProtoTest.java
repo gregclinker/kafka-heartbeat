@@ -16,11 +16,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import static java.util.Collections.singletonList;
+import static org.apache.kafka.common.config.ConfigResource.Type.TOPIC;
 
 public class ProtoTest {
 
     @Test
-    @SetEnvironmentVariable(key = "KAFKA_BOOTSTRAP_SERVERS", value = "172.19.0.8:29092,172.19.0.6:29093,172.19.0.5:29094,172.19.0.10:29095,172.19.0.7:29096,172.19.0.9:29097")
+    @SetEnvironmentVariable(key = "KAFKA_BOOTSTRAP_SERVERS", value = "172.18.0.6:29092,172.18.0.9:29093,172.18.0.7:29094,172.18.0.8:29095,172.18.0.5:29096,172.18.0.10:29097")
     @SetEnvironmentVariable(key = "KAFKA_SECURITY_PROTOCOL", value = "SSL")
     @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_LOCATION", value = "/home/greg/work/kafka-heartbeat/secrets/kafka_truststore.jks")
     @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_PASSWORD", value = "confluent")
@@ -30,14 +31,19 @@ public class ProtoTest {
     @SetEnvironmentVariable(key = "KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM", value = " ")
     @SetEnvironmentVariable(key = "HEART_BEAT_CONFIG", value = "{\"numberOfBrokers\":3,\"interval\":10,\"standardIsr\":2,\"reducedIsr\":1,\"countToSwitch\":3,\"topics\":[\"greg-test1\",\"greg-test2\"]}")
     public void test2() throws Exception {
-        List<String> topics = new ArrayList<>();
-        for (int i = 1; i <= 10; i++) {
-            topics.add("does-not-exist" + i);
-        }
-        for (int i = 1; i <= 50; i++) {
-            topics.add("greg-test" + i);
-        }
-        setMinIsr(topics, 2);
+        final List<TopicInfo> topicInfos = getTopics();
+
+        topicInfos.stream().forEach(t -> System.out.println(t.getName() + ", rf=" + t.getReplicationFactor() + ", minISR=" + t.getMinIsr()));
+
+        topicInfos.stream().filter(t -> t.getReplicationFactor() == 4).collect(Collectors.toList()).forEach(s -> System.out.println(s.getName()));
+    }
+
+    private List<TopicInfo> getTopics() throws Exception {
+        final AdminClient adminClient = getAdminClient();
+        final List<String> allTopics = adminClient.listTopics().listings().get().stream().map(TopicListing::name).collect(Collectors.toList());
+        final Map<ConfigResource, Config> configResourceConfigMap = adminClient.describeConfigs(allTopics.stream().map(t -> new ConfigResource(TOPIC, t)).collect(Collectors.toSet())).all().get();
+        final Map<String, TopicDescription> topicDescriptionMap = adminClient.describeTopics(allTopics).all().get();
+        return topicDescriptionMap.values().stream().map(t -> new TopicInfo(t, configResourceConfigMap.get(new ConfigResource(TOPIC, t.name())))).collect(Collectors.toList());
     }
 
     private List<String> setMinIsr(List<String> topics, int minIsr) throws IOException, InterruptedException, ExecutionException {
@@ -50,7 +56,7 @@ public class ProtoTest {
         System.out.println("confirmed topics=" + topics);
 
         // filter out topics that already have correct minISR
-        final Set<ConfigResource> resources = topics.stream().map(t -> new ConfigResource(ConfigResource.Type.TOPIC, t)).collect(Collectors.toSet());
+        final Set<ConfigResource> resources = topics.stream().map(t -> new ConfigResource(TOPIC, t)).collect(Collectors.toSet());
         final Map<ConfigResource, Config> configResourceConfigMap = adminClient.describeConfigs(resources).all().get();
         final List<String> minISRAlreadySetTopics = configResourceConfigMap.entrySet().stream().filter(e -> (Integer.parseInt(e.getValue().get(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG).value()) == minIsr)).map(e -> e.getKey().name()).collect(Collectors.toList());
         System.out.println("topics with minISR already set=" + minISRAlreadySetTopics);
@@ -62,7 +68,7 @@ public class ProtoTest {
         if (topics.size() > 0) {
             final Map<ConfigResource, Collection<AlterConfigOp>> configs = new HashMap<>(1);
             for (String topic : topics) {
-                configs.put(new ConfigResource(ConfigResource.Type.TOPIC, topic), singletonList(new AlterConfigOp(new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, minIsr + ""), AlterConfigOp.OpType.SET)));
+                configs.put(new ConfigResource(TOPIC, topic), singletonList(new AlterConfigOp(new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, minIsr + ""), AlterConfigOp.OpType.SET)));
             }
             adminClient.incrementalAlterConfigs(configs).all().get();
         } else {
@@ -164,7 +170,7 @@ public class ProtoTest {
 
     private void setMinIsr(String topic, int minIsr) throws Exception {
         final AdminClient adminClient = getAdminClient();
-        final ConfigResource configResource = new ConfigResource(ConfigResource.Type.TOPIC, topic);
+        final ConfigResource configResource = new ConfigResource(TOPIC, topic);
         final ConfigEntry configEntry = new ConfigEntry(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, minIsr + "");
         final AlterConfigOp alterConfigOp = new AlterConfigOp(configEntry, AlterConfigOp.OpType.SET);
         final Map<ConfigResource, Collection<AlterConfigOp>> configs = new HashMap<>(1);
@@ -175,7 +181,7 @@ public class ProtoTest {
 
     private int getMinIsr(String topic) throws Exception {
         final AdminClient adminClient = getAdminClient();
-        final Set<ConfigResource> resources = Collections.singleton(new ConfigResource(ConfigResource.Type.TOPIC, topic));
+        final Set<ConfigResource> resources = Collections.singleton(new ConfigResource(TOPIC, topic));
         final Map<ConfigResource, Config> configResourceConfigMap = adminClient.describeConfigs(resources).all().get();
         final Object[] keys = configResourceConfigMap.keySet().toArray();
         for (ConfigEntry configEntry : configResourceConfigMap.get(keys[0]).entries()) {

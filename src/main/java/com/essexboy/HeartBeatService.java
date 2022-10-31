@@ -114,15 +114,13 @@ public class HeartBeatService {
     }
 
     public TopicInfo getTopicData(String topicName) {
-        TopicInfo topicInfo = new TopicInfo();
-        topicInfo.setName(topicName);
         try (AdminClient adminClient = AdminClient.create(config.getKafkaProperties())) {
             final TopicDescription topicDescription = adminClient.describeTopics(List.of(topicName)).topicNameValues().get(topicName).get();
-            topicInfo.setPartitions(topicDescription.partitions().stream().map(PartitionInfo::new).collect(Collectors.toList()));
+            return new TopicInfo(topicDescription);
         } catch (Exception e) {
             LOGGER.error("ERROR getTopicData, topic {}", topicName, e);
         }
-        return topicInfo;
+        return null;
     }
 
     private static class ProcessedStats {
