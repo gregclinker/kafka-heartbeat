@@ -33,9 +33,27 @@ public class ProtoTest {
     public void test2() throws Exception {
         final List<TopicInfo> topicInfos = getTopics();
 
-        topicInfos.stream().forEach(t -> System.out.println(t.getName() + ", rf=" + t.getReplicationFactor() + ", minISR=" + t.getMinIsr()));
+        topicInfos.stream().forEach(System.out::println);
 
-        topicInfos.stream().filter(t -> t.getReplicationFactor() == 4).collect(Collectors.toList()).forEach(s -> System.out.println(s.getName()));
+        // get topics with < 4 replicas
+        System.out.println("partitions with < 4 replicas");
+        topicInfos.stream().filter(t -> t.getPartitionMinReplicas() < 4).collect(Collectors.toList()).forEach(s -> System.out.println(s.getName()));
+
+        // get topics with < 4 replicas
+        System.out.println("partitions with < 3 ISRs");
+        for (TopicInfo topicInfo : topicInfos) {
+            if (topicInfo.getPartitionsLessThanIsr(3).size() > 0) {
+                System.out.println(topicInfo.getPartitionsLessThanIsr(4));
+            }
+        }
+
+        // get topics with < 4 replicas
+        System.out.println("partitions with < 5 replicas");
+        for (TopicInfo topicInfo : topicInfos) {
+            if (topicInfo.getPartitionsLessThanReplicationFactor(5).size() > 0) {
+                System.out.println(topicInfo.getPartitionsLessThanReplicationFactor(5));
+            }
+        }
     }
 
     private List<TopicInfo> getTopics() throws Exception {

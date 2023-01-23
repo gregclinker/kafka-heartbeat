@@ -1,5 +1,6 @@
 package com.essexboy;
 
+import lombok.Getter;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.config.TopicConfig;
@@ -7,6 +8,7 @@ import org.apache.kafka.common.config.TopicConfig;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Getter
 public class TopicInfo {
     private String name;
     private Config config;
@@ -35,7 +37,28 @@ public class TopicInfo {
         return partitions.stream().map(p -> p.getIsrs().size()).min(Integer::compareTo).get();
     }
 
+    public int getPartitionMinReplicas() {
+        return partitions.stream().map(p -> p.getReplicas().size()).min(Integer::compareTo).get();
+    }
+
     public int getReplicationFactor() {
         return partitions.stream().map(p -> p.getReplicas().size()).max(Integer::compareTo).get();
+    }
+
+    public List<PartitionInfo> getPartitionsLessThanReplicationFactor(int rf) {
+        return partitions.stream().filter(p -> p.getReplicas().size() < rf).collect(Collectors.toList());
+    }
+
+    public List<PartitionInfo> getPartitionsLessThanIsr(int isr) {
+        return partitions.stream().filter(p -> p.getIsrs().size() < isr).collect(Collectors.toList());
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("TopicInfo{");
+        sb.append("name='").append(name).append('\'');
+        sb.append(", partitions=").append(partitions);
+        sb.append('}');
+        return sb.toString();
     }
 }
