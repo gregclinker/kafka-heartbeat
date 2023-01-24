@@ -11,7 +11,7 @@ docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' zoo1
 docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' zoo2  | awk '{print "export ZOO2="$1}' >> setKafka.sh
 docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' zoo3  | awk '{print "export ZOO3="$1}' >> setKafka.sh
 #
-source ./setKafka.sh
+source setKafka.sh
 #rm setKafka.sh
 #
 echo $KAFKA1 | awk '{print $1,"kafka1"}'
