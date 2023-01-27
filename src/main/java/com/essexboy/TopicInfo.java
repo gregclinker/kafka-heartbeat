@@ -37,7 +37,7 @@ public class TopicInfo {
         return partitions.stream().map(p -> p.getIsrs().size()).min(Integer::compareTo).get();
     }
 
-    public int getPartitionMinReplicas() {
+    public int getMinReplicas() {
         return partitions.stream().map(p -> p.getReplicas().size()).min(Integer::compareTo).get();
     }
 
