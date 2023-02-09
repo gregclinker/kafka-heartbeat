@@ -21,7 +21,7 @@ import static org.apache.kafka.common.config.ConfigResource.Type.TOPIC;
 public class ProtoTest {
 
     @Test
-    @SetEnvironmentVariable(key = "KAFKA_BOOTSTRAP_SERVERS", value = "172.19.0.6:29092,172.19.0.7:29093,172.19.0.8:29094,172.19.0.5:29095,172.19.0.9:29096,172.19.0.10:29097")
+    @SetEnvironmentVariable(key = "KAFKA_BOOTSTRAP_SERVERS", value = "172.19.0.10:29092,172.19.0.8:29093,172.19.0.6:29094,172.19.0.7:29095,172.19.0.5:29096,172.19.0.9:29097")
     @SetEnvironmentVariable(key = "KAFKA_SECURITY_PROTOCOL", value = "SSL")
     @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_LOCATION", value = "/home/greg/work/kafka-heartbeat/secrets/kafka_truststore.jks")
     @SetEnvironmentVariable(key = "KAFKA_SSL_TRUSTSTORE_PASSWORD", value = "confluent")
@@ -36,9 +36,15 @@ public class ProtoTest {
         List<TopicInfo> topicInfos = getTopics();
         topicInfos = topicInfos.stream().filter(t -> (config.getTopics().contains(t.getName()))).collect(Collectors.toList());
 
-        if (hasBadHeath(topicInfos, 4, 3)) {
+        int rf = 5;
+        int isr = 3;
+        final List<TopicInfo> badTopics = getBadTopics(topicInfos, rf, isr);
+        if (badTopics.size() > 0) {
             System.out.println("BAD HEALTH");
-            showBadTopics(topicInfos, 4, 3);
+        }
+        for (TopicInfo topicInfo : badTopics) {
+            System.out.println("Topic name=" + topicInfo.getName());
+            getBadPartitions(topicInfo, rf, isr).stream().forEach(System.out::println);
         }
     }
 
@@ -79,22 +85,16 @@ PartitionInfo(id=23, leader=2, replicas=[2, 4], isrs=[2, 4])
         return topicDescriptionMap.values().stream().map(t -> new TopicInfo(t, configResourceConfigMap.get(new ConfigResource(TOPIC, t.name())))).collect(Collectors.toList());
     }
 
-    private boolean hasBadHeath(List<TopicInfo> topicInfos, int rf, int minIsr) throws Exception {
-        List<TopicInfo> topicInfosUnderMinIsr = topicInfos.stream().filter(t -> t.getPartitionMinIsr() < rf).collect(Collectors.toList());
-        List<TopicInfo> topicInfosUnderMinReplicas = topicInfos.stream().filter(t -> t.getMinReplicas() < minIsr).collect(Collectors.toList());
-        return topicInfosUnderMinIsr.size() > 0 || topicInfosUnderMinReplicas.size() > 0;
+    private List<TopicInfo> getBadTopics(List<TopicInfo> topicInfos, int rf, int isr) throws Exception {
+        List<TopicInfo> badTopics = topicInfos.stream().filter(t -> t.getPartitionMinIsr() < isr).collect(Collectors.toList());
+        badTopics.addAll(topicInfos.stream().filter(t -> t.getMinReplicas() < rf).filter(t -> !badTopics.contains(t)).collect(Collectors.toList()));
+        return badTopics;
     }
 
-    private void showBadTopics(List<TopicInfo> topicInfos, int rf, int minIsr) throws Exception {
-        List<TopicInfo> topicInfosUnderMinIsr = topicInfos.stream().filter(t -> t.getPartitionMinIsr() < rf).collect(Collectors.toList());
-        List<TopicInfo> topicInfosUnderMinReplicas = topicInfos.stream().filter(t -> t.getMinReplicas() < minIsr).collect(Collectors.toList());
-        // get topics with < 4 replicas
-        if (!topicInfosUnderMinIsr.isEmpty()) {
-            for (TopicInfo topicInfo : topicInfosUnderMinIsr) {
-                System.out.println(topicInfo.getName());
-                topicInfo.getPartitionsLessThanIsr(4).stream().forEach(System.out::println);
-            }
-        }
+    private List<PartitionInfo> getBadPartitions(TopicInfo topicInfo, int rf, int isr) throws Exception {
+        List<PartitionInfo> badPartitions = topicInfo.getPartitionsLessThanIsr(isr);
+        badPartitions.addAll(topicInfo.getPartitionsLessThanReplicationFactor(rf).stream().filter(p -> !badPartitions.contains(p)).collect(Collectors.toList()));
+        return badPartitions;
     }
 
     private List<String> setMinIsr(List<String> topics, int minIsr) throws IOException, InterruptedException, ExecutionException {

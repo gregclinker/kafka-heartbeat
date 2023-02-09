@@ -29,20 +29,12 @@ public class TopicInfo {
         return name;
     }
 
-    public int getMinIsr() {
-        return Integer.parseInt(config.get(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG).value());
-    }
-
     public int getPartitionMinIsr() {
         return partitions.stream().map(p -> p.getIsrs().size()).min(Integer::compareTo).get();
     }
 
     public int getMinReplicas() {
         return partitions.stream().map(p -> p.getReplicas().size()).min(Integer::compareTo).get();
-    }
-
-    public int getReplicationFactor() {
-        return partitions.stream().map(p -> p.getReplicas().size()).max(Integer::compareTo).get();
     }
 
     public List<PartitionInfo> getPartitionsLessThanReplicationFactor(int rf) {
